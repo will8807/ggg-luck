@@ -79,7 +79,7 @@ This analysis reveals which teams have been **schedule beneficiaries** versus **
 
 ![Scoring Trends](charts/scoring_trends.png)
 
-This visualization reveals crucial **momentum patterns** and **scoring consistency** across all teams. The solid lines show actual weekly scores, while dashed trend lines indicate each team's trajectory. Teams with strong upward trends are building momentum for playoff pushes.
+This **heatmap visualization** displays each team's weekly scoring performance with color-coded intensity. Darker blue cells indicate higher scores, while lighter/white cells show lower performances. The **sparklines** on the right reveal each team's trajectory: ↗ rising trends (green), → stable performance (gray), and ↘ declining trends (red). Teams are sorted by average scoring to easily identify the strongest performers.
 
 ### 🔥 Momentum Analysis
 

@@ -652,7 +652,7 @@ This analysis reveals which teams have been **schedule beneficiaries** versus **
 
 ![Scoring Trends](charts/scoring_trends.png)
 
-This visualization reveals crucial **momentum patterns** and **scoring consistency** across all teams. The solid lines show actual weekly scores, while dashed trend lines indicate each team's trajectory. Teams with strong upward trends are building momentum for playoff pushes.
+This **heatmap visualization** displays each team's weekly scoring performance with color-coded intensity. Darker blue cells indicate higher scores, while lighter/white cells show lower performances. The **sparklines** on the right reveal each team's trajectory: ↗ rising trends (green), → stable performance (gray), and ↘ declining trends (red). Teams are sorted by average scoring to easily identify the strongest performers.
 
 ### 🔥 Momentum Analysis
 
@@ -832,62 +832,159 @@ This visualization reveals crucial **momentum patterns** and **scoring consisten
         plt.close()
 
     def _create_scoring_trends_chart(self, luck_metrics: List[LuckMetrics], charts_dir: str):
-        """Create a line chart showing weekly scoring trends for all teams."""
-        plt.figure(figsize=(14, 8))
-        
+        """Create a heatmap showing weekly scoring trends with sparklines for each team."""
         # Filter teams with scoring trends
         teams_with_trends = [m for m in luck_metrics if m.scoring_trends]
         
         if not teams_with_trends:
             return
-            
-        # Create color palette
-        colors = plt.cm.Set3(np.linspace(0, 1, len(teams_with_trends)))
         
+        # Sort teams by average score for better visualization
+        teams_with_trends.sort(key=lambda x: x.scoring_trends.avg_score, reverse=True)
+        
+        # Prepare data for heatmap
+        max_weeks = max(len(m.scoring_trends.weekly_scores) for m in teams_with_trends)
+        heatmap_data = []
+        team_names = []
+        
+        for metrics in teams_with_trends:
+            trends = metrics.scoring_trends
+            # Pad with NaN if team has fewer weeks
+            scores = trends.weekly_scores + [np.nan] * (max_weeks - len(trends.weekly_scores))
+            heatmap_data.append(scores)
+            team_names.append(f"{metrics.team_name[:16]} ({trends.avg_score:.1f})")
+        
+        # Create figure with custom layout for heatmap and sparklines
+        fig = plt.figure(figsize=(16, max(8, len(teams_with_trends) * 0.6)))
+        
+        # Create subplot layout: heatmap takes 75%, sparklines take 25%
+        gs = fig.add_gridspec(1, 2, width_ratios=[3, 1], wspace=0.1)
+        
+        # Create heatmap
+        ax_heatmap = fig.add_subplot(gs[0])
+        heatmap_array = np.array(heatmap_data)
+        
+        # Create custom colormap - white for low scores, blue for high scores
+        im = ax_heatmap.imshow(heatmap_array, cmap='Blues', aspect='auto', interpolation='nearest')
+        
+        # Set heatmap labels and formatting
+        ax_heatmap.set_xticks(range(max_weeks))
+        ax_heatmap.set_xticklabels([f'W{i+1}' for i in range(max_weeks)])
+        ax_heatmap.set_yticks(range(len(team_names)))
+        ax_heatmap.set_yticklabels(team_names)
+        ax_heatmap.set_xlabel('Week', fontsize=12, fontweight='bold')
+        ax_heatmap.set_title('Weekly Scoring Heatmap & Trends', fontsize=14, fontweight='bold', pad=20)
+        
+        # Add text annotations with scores
+        # Calculate percentiles for better color contrast decisions
+        valid_scores = heatmap_array[~np.isnan(heatmap_array)]
+        score_min, score_max = np.min(valid_scores), np.max(valid_scores)
+        score_range = score_max - score_min
+        
+        for i in range(len(teams_with_trends)):
+            for j in range(max_weeks):
+                if j < len(teams_with_trends[i].scoring_trends.weekly_scores):
+                    score = teams_with_trends[i].scoring_trends.weekly_scores[j]
+                    
+                    # Normalize score to 0-1 range to match colormap
+                    normalized_score = (score - score_min) / score_range if score_range > 0 else 0.5
+                    
+                    # Use white text for darker colors (blue = high scores)
+                    # and black text for lighter colors (white = low scores)
+                    text_color = 'white' if normalized_score > 0.5 else 'black'
+                    
+                    # Add text with outline for better readability
+                    outline_color = 'black' if text_color == 'white' else 'white'
+                    
+                    # Draw outline by drawing text multiple times with slight offsets
+                    for dx, dy in [(-0.5, -0.5), (-0.5, 0.5), (0.5, -0.5), (0.5, 0.5)]:
+                        ax_heatmap.text(j + dx/100, i + dy/100, f'{score:.0f}', ha='center', va='center', 
+                                      fontsize=8, fontweight='bold', color=outline_color, alpha=0.8)
+                    
+                    # Draw main text
+                    ax_heatmap.text(j, i, f'{score:.0f}', ha='center', va='center', 
+                                  fontsize=8, fontweight='bold', color=text_color)
+        
+        # Add colorbar
+        cbar = plt.colorbar(im, ax=ax_heatmap, shrink=0.8)
+        cbar.set_label('Points Scored', rotation=270, labelpad=20, fontsize=10, fontweight='bold')
+        
+        # Create sparklines subplot
+        ax_sparklines = fig.add_subplot(gs[1])
+        ax_sparklines.set_xlim(0, 1)
+        ax_sparklines.set_ylim(-0.5, len(teams_with_trends) - 0.5)
+        
+        # Draw sparklines for each team with improved team association
         for i, metrics in enumerate(teams_with_trends):
             trends = metrics.scoring_trends
-            weeks = range(1, len(trends.weekly_scores) + 1)
-            
-            # Plot the scoring line
-            plt.plot(weeks, trends.weekly_scores, 
-                    color=colors[i], marker='o', linewidth=2, markersize=4, 
-                    label=f"{metrics.team_name[:12]} ({trends.avg_score:.1f})", alpha=0.8)
-            
-            # Add trend line
             if len(trends.weekly_scores) > 1:
-                z = np.polyfit(weeks, trends.weekly_scores, 1)
-                trend_line = np.poly1d(z)
-                plt.plot(weeks, trend_line(weeks), 
-                        color=colors[i], linestyle='--', alpha=0.5, linewidth=1)
+                # Normalize the sparkline to fit in the subplot
+                y_pos = len(teams_with_trends) - 1 - i  # Flip to match heatmap order
+                
+                # Add subtle background shading to match team rows
+                ax_sparklines.axhspan(y_pos - 0.4, y_pos + 0.4, 
+                                    facecolor='lightgray', alpha=0.1, zorder=0)
+                
+                # Create mini x-axis for this team's sparkline
+                x_norm = np.linspace(0.15, 0.7, len(trends.weekly_scores))
+                
+                # Normalize scores to fit in a small vertical space
+                scores_norm = np.array(trends.weekly_scores)
+                scores_min, scores_max = scores_norm.min(), scores_norm.max()
+                if scores_max > scores_min:
+                    scores_norm = (scores_norm - scores_min) / (scores_max - scores_min) * 0.25
+                else:
+                    scores_norm = np.zeros_like(scores_norm)
+                
+                # Offset to center around the team's row
+                scores_norm = scores_norm + y_pos - 0.125
+                
+                # Determine sparkline color based on trend
+                if trends.trend_slope > 1:
+                    color = '#27ae60'  # Green for positive trend
+                elif trends.trend_slope < -1:
+                    color = '#e74c3c'  # Red for negative trend
+                else:
+                    color = '#95a5a6'  # Gray for neutral trend
+                
+                # Draw connecting line from heatmap to sparkline
+                ax_sparklines.plot([0.05, 0.15], [y_pos, y_pos], 
+                                 color='gray', linewidth=1, alpha=0.5, linestyle='--')
+                
+                # Draw the sparkline
+                ax_sparklines.plot(x_norm, scores_norm, color=color, linewidth=2.5, alpha=0.9)
+                ax_sparklines.fill_between(x_norm, y_pos - 0.125, scores_norm, 
+                                         color=color, alpha=0.4)
+                
+                # Add team abbreviation on the left
+                team_abbr = ''.join([word[0] for word in metrics.team_name.split()[:2]])[:3]
+                ax_sparklines.text(0.02, y_pos, team_abbr, ha='left', va='center',
+                                 fontsize=7, fontweight='bold', color='black')
+                
+                # Add trend indicator and value on the right
+                trend_symbol = "↗" if trends.trend_slope > 1 else "↘" if trends.trend_slope < -1 else "→"
+                ax_sparklines.text(0.75, y_pos + 0.1, trend_symbol, ha='left', va='center',
+                                 fontsize=10, fontweight='bold', color=color)
+                ax_sparklines.text(0.75, y_pos - 0.1, f'{trends.trend_slope:+.1f}', ha='left', va='center',
+                                 fontsize=6, color=color, fontweight='bold')
         
-        # Add league average line
-        all_scores = []
-        max_weeks = max(len(m.scoring_trends.weekly_scores) for m in teams_with_trends)
+        # Format sparklines subplot
+        ax_sparklines.set_xticks([])
+        ax_sparklines.set_yticks([])
+        ax_sparklines.set_xlabel('Trend', fontsize=10, fontweight='bold')
+        ax_sparklines.spines['top'].set_visible(False)
+        ax_sparklines.spines['right'].set_visible(False)
+        ax_sparklines.spines['bottom'].set_visible(False)
+        ax_sparklines.spines['left'].set_visible(False)
         
-        for week in range(1, max_weeks + 1):
-            week_scores = [m.scoring_trends.weekly_scores[week-1] 
-                          for m in teams_with_trends 
-                          if len(m.scoring_trends.weekly_scores) >= week]
-            if week_scores:
-                all_scores.append(np.mean(week_scores))
-        
-        if all_scores:
-            plt.plot(range(1, len(all_scores) + 1), all_scores, 
-                    color='black', linewidth=3, linestyle='-', 
-                    label='League Average', alpha=0.7)
-        
-        plt.xlabel('Week', fontsize=12, fontweight='bold')
-        plt.ylabel('Points Scored', fontsize=12, fontweight='bold')
-        plt.title('Weekly Scoring Trends by Team\\n(Dashed lines show trend direction)', fontsize=14, fontweight='bold', pad=20)
-        plt.grid(True, alpha=0.3)
-        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
-        
-        # Set reasonable axis limits
-        if teams_with_trends:
-            all_weekly_scores = [score for m in teams_with_trends for score in m.scoring_trends.weekly_scores]
-            min_score = min(all_weekly_scores) * 0.9
-            max_score = max(all_weekly_scores) * 1.1
-            plt.ylim(min_score, max_score)
+        # Add legend for sparklines at the bottom
+        legend_elements = [
+            plt.Line2D([0], [0], color='#27ae60', lw=2, label='↗ Rising'),
+            plt.Line2D([0], [0], color='#95a5a6', lw=2, label='→ Stable'), 
+            plt.Line2D([0], [0], color='#e74c3c', lw=2, label='↘ Falling')
+        ]
+        ax_sparklines.legend(handles=legend_elements, loc='lower center', 
+                           bbox_to_anchor=(0.5, -0.15), fontsize=8, ncol=3)
         
         plt.tight_layout()
         plt.savefig(f'{charts_dir}/scoring_trends.png', dpi=300, bbox_inches='tight')
