@@ -121,10 +121,6 @@ class YahooFantasyAPI:
             headers['Authorization'] = f'Bearer {self.access_token}'
             response = requests.get(url, headers=headers)
         
-        # Debug response
-        print(f"🔍 API Response Status: {response.status_code}")
-        print(f"🔍 API Response Headers: {dict(response.headers)}")
-        print(f"🔍 API Response Content (first 200 chars): {response.text[:200]}")
         
         response.raise_for_status()
         

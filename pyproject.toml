@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "ggg-luck"
@@ -29,8 +29,11 @@ ggg-luck-debug = "ggg_luck.utils.debug:analyze_url_components"
 ggg-luck-example = "ggg_luck.cli_tools.example:main"
 ggg-luck-analyze = "ggg_luck.main:main"
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/ggg_luck"]
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
 
 [dependency-groups]
 dev = [

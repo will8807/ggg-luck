@@ -92,20 +92,43 @@ class LuckCalculator:
             
         return luck_scores
     
-    def analyze_team_luck(self, league_key: str, current_week: int = 8) -> List[LuckMetrics]:
+    def analyze_team_luck(self, league_key: str, current_week: int = 17) -> List[LuckMetrics]:
         """
         Analyze luck for all teams in a league.
         
         Args:
             league_key: Yahoo league key
-            current_week: Current week to analyze through
+            current_week: Maximum week to check (will stop at first incomplete week)
         """
         print(f"🔍 Analyzing team luck for league {league_key}...")
         
-        # Get all matchups for the season
+        # Determine which weeks are complete
+        completed_weeks = []
+        for week in range(1, current_week + 1):
+            print(f"📊 Checking week {week} completion...")
+            try:
+                matchups_data = self.api.make_api_request(f"league/{league_key}/scoreboard;week={week}")
+                week_matchups = self._parse_matchups(matchups_data, week)
+                if week_matchups:  # If we got matchups, week is complete
+                    completed_weeks.append(week)
+                    print(f"✅ Week {week} is complete")
+                else:
+                    print(f"⏳ Week {week} is not complete yet - stopping here")
+                    break
+            except Exception as e:
+                print(f"⏳ Week {week} is not available yet - stopping here")
+                break
+        
+        if not completed_weeks:
+            print("❌ No completed weeks found")
+            return []
+            
+        print(f"📊 Analyzing {len(completed_weeks)} completed weeks: {completed_weeks}")
+        
+        # Get all matchups for completed weeks
         all_matchups = []
         
-        for week in range(1, current_week + 1):
+        for week in completed_weeks:
             print(f"📊 Fetching week {week} matchups...")
             try:
                 matchups_data = self.api.make_api_request(f"league/{league_key}/scoreboard;week={week}")
@@ -119,11 +142,11 @@ class LuckCalculator:
             print("❌ No matchup data found")
             return []
         
-        # Calculate luck for each week
+        # Calculate luck for each completed week
         team_luck_totals = {}
         team_matchups = {}
         
-        for week in range(1, current_week + 1):
+        for week in completed_weeks:
             week_luck = self.calculate_weekly_luck(all_matchups, week)
             
             for team_id, luck_score in week_luck.items():
@@ -219,28 +242,70 @@ class LuckCalculator:
             if not isinstance(matchup_list, list):
                 matchup_list = [matchup_list]
             
-            for matchup in matchup_list:
+            for i, matchup in enumerate(matchup_list):
                 if 'teams' not in matchup:
                     continue
                     
-                teams = matchup['teams']['team']
-                if not isinstance(teams, list) or len(teams) != 2:
+                # Check if matchup is complete - 'postevent' means finished, 'midevent' means in progress
+                matchup_status = matchup.get('status', 'unknown')
+                
+                # Skip incomplete weeks (midevent, preevent, etc.)
+                if matchup_status != 'postevent':
+                    print(f"⏳ Week {week} is not complete yet (status: {matchup_status}) - skipping")
+                    return matchups  # Return early, don't process this week
+                
+                # Also check for winner_team_key presence as additional confirmation
+                if 'winner_team_key' not in matchup:
+                    print(f"⚠️ Week {week} appears incomplete (no winner) - skipping")
+                    return matchups
+                    
+                teams_data = matchup['teams']
+                
+                teams = teams_data.get('team', [])
+                if not isinstance(teams, list):
+                    teams = [teams]  # Single team structure
+                    
+                if len(teams) != 2:
+                    print(f"⚠️  Expected 2 teams, got {len(teams)}")
                     continue
                 
-                # Extract team data
+                
+                # Extract team data - Yahoo API provides teams directly as dicts
                 team1_data = teams[0]
                 team2_data = teams[1]
                 
-                # Parse team 1
-                team1_info = team1_data[0][2]['team']  # Team info is nested
-                team1_stats = team1_data[1]['team']   # Team stats
-                
-                team2_info = team2_data[0][2]['team']
-                team2_stats = team2_data[1]['team']
-                
-                # Get scores and determine winner
-                team1_score = float(team1_stats.get('team_points', {}).get('total', 0))
-                team2_score = float(team2_stats.get('team_points', {}).get('total', 0))
+                # Parse team data - teams are already in the correct format
+                try:
+                    # Teams are direct dictionaries with all the info we need
+                    team1_info = team1_data
+                    team1_stats = team1_data
+                    team2_info = team2_data
+                    team2_stats = team2_data
+                    
+                    # Get scores - try different possible locations
+                    team1_score = 0
+                    team2_score = 0
+                    
+                    # Try team_points structure
+                    if 'team_points' in team1_stats:
+                        team1_score = float(team1_stats['team_points'].get('total', 0))
+                    elif 'points' in team1_stats:
+                        team1_score = float(team1_stats['points'].get('total', 0))
+                    elif 'team_projected_points' in team1_stats:
+                        team1_score = float(team1_stats['team_projected_points'].get('total', 0))
+                    
+                    if 'team_points' in team2_stats:
+                        team2_score = float(team2_stats['team_points'].get('total', 0))
+                    elif 'points' in team2_stats:
+                        team2_score = float(team2_stats['points'].get('total', 0))
+                    elif 'team_projected_points' in team2_stats:
+                        team2_score = float(team2_stats['team_projected_points'].get('total', 0))
+                        
+                except (KeyError, IndexError, TypeError) as e:
+                    print(f"⚠️  Could not parse team data for matchup: {e}")
+                    print(f"🔍  Team1 structure: {team1_data}")
+                    print(f"🔍  Team2 structure: {team2_data}")
+                    continue
                 
                 team1_won = team1_score > team2_score
                 team2_won = team2_score > team1_score
