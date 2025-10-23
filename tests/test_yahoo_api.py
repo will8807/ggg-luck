@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import Mock, patch
-from ggg_luck.yahoo_api import YahooFantasyAPI
+from ggg_luck.api import YahooFantasyAPI
 
 
 class TestYahooFantasyAPI:
@@ -54,7 +54,7 @@ class TestYahooFantasyAPI:
         'YAHOO_CLIENT_ID': 'test_client_id',
         'YAHOO_CLIENT_SECRET': 'test_client_secret'
     })
-    @patch('ggg_luck.yahoo_api.requests.post')
+    @patch('ggg_luck.api.yahoo_api.requests.post')
     def test_exchange_code_for_token_success(self, mock_post):
         """Test successful token exchange."""
         mock_response = Mock()
@@ -86,7 +86,7 @@ class TestYahooFantasyAPI:
         'YAHOO_CLIENT_ID': 'test_client_id',
         'YAHOO_CLIENT_SECRET': 'test_client_secret'
     })
-    @patch('ggg_luck.yahoo_api.requests.get')
+    @patch('ggg_luck.api.yahoo_api.requests.get')
     def test_make_api_request_success(self, mock_get):
         """Test successful API request."""
         mock_response = Mock()

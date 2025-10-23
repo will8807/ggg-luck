@@ -1,7 +1,7 @@
 """Simple CLI script to test Yahoo Fantasy API connection."""
 
 import sys
-from ggg_luck.yahoo_api import YahooFantasyAPI
+from ggg_luck.api import YahooFantasyAPI
 
 
 def test_credentials():

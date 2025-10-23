@@ -1,7 +1,7 @@
 """Debug Yahoo API setup and URLs."""
 
 import urllib.parse
-from ggg_luck.yahoo_api import YahooFantasyAPI
+from ggg_luck.api import YahooFantasyAPI
 
 
 def analyze_url_components():

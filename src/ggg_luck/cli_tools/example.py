@@ -1,7 +1,6 @@
 """Example usage of Yahoo Fantasy API with HTTPS OAuth flow."""
 
-from ggg_luck.yahoo_api import YahooFantasyAPI
-from ggg_luck.oauth_server import get_authorization_code_interactive
+from ggg_luck.api import YahooFantasyAPI, get_authorization_code_interactive
 
 
 def main():
