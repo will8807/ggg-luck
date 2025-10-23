@@ -201,7 +201,30 @@ ggg-luck/
 - **GitHub Integration**: Generated reports render perfectly on GitHub with embedded images
 - **Comprehensive Logging**: Detailed progress tracking and error diagnostics
 
-## 🧪 Development
+## � Automated Weekly Analysis
+
+This project includes GitHub Actions workflow for automated weekly analysis every Tuesday morning:
+
+### Quick Setup
+1. **Add Repository Secrets**: Configure your Yahoo API credentials in GitHub repository settings
+2. **Enable Actions**: The workflow runs automatically every Tuesday at 9 AM UTC
+3. **Manual Trigger**: Test anytime from the Actions tab
+
+See [GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md) for detailed setup instructions.
+
+### Test Locally First
+```bash
+# Test your setup before deploying to GitHub Actions
+python test_workflow_locally.py
+```
+
+### What Gets Generated Automatically
+- 📊 Updated `luck_analysis_report.md` with latest data  
+- 📈 Fresh charts in `/charts` directory
+- 🏷️ Tagged releases for each week's analysis
+- 🌐 Optional GitHub Pages deployment
+
+## �🧪 Development
 
 ```bash
 # Run tests
@@ -212,6 +235,9 @@ uv run pytest --cov=ggg_luck
 
 # Test specific functionality
 uv run pytest tests/test_yahoo_api.py -v
+
+# Test GitHub Actions setup locally
+python test_workflow_locally.py
 ```
 
 ## 🤝 Contributing

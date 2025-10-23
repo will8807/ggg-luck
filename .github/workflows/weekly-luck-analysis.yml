@@ -1,0 +1,144 @@
+name: Weekly Fantasy Football Luck Analysis
+
+on:
+  schedule:
+    # Runs every Tuesday at 2:00 PM UTC (8:00 AM Central Time)
+    - cron: '0 14 * * 2'
+  
+  # Allow manual triggering for testing
+  workflow_dispatch:
+
+permissions:
+  contents: write  # Required to commit generated reports
+  pages: write     # Required if you want to publish to GitHub Pages
+  id-token: write  # Required for pages deployment
+
+jobs:
+  analyze-luck:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Cache uv dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/uv
+        key: ${{ runner.os }}-uv-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-uv-
+    
+    - name: Install dependencies
+      run: |
+        uv sync --dev
+    
+    - name: Create required directories
+      run: |
+        mkdir -p charts
+        mkdir -p reports
+    
+    - name: Run luck analysis
+      env:
+        # Add your Yahoo API credentials as repository secrets (match .env file names)
+        YAHOO_CLIENT_ID: ${{ secrets.YAHOO_CLIENT_ID }}
+        YAHOO_CLIENT_SECRET: ${{ secrets.YAHOO_CLIENT_SECRET }}
+        YAHOO_REDIRECT_URI: ${{ secrets.YAHOO_REDIRECT_URI }}
+        # Optional: Add these if you want to store tokens as secrets
+        YAHOO_ACCESS_TOKEN: ${{ secrets.YAHOO_ACCESS_TOKEN }}
+        YAHOO_REFRESH_TOKEN: ${{ secrets.YAHOO_REFRESH_TOKEN }}
+      run: |
+        uv run python main.py
+    
+    - name: Check for changes
+      id: changes
+      run: |
+        git add -A
+        if git diff --staged --quiet; then
+          echo "changes=false" >> $GITHUB_OUTPUT
+          echo "No changes to commit"
+        else
+          echo "changes=true" >> $GITHUB_OUTPUT
+          echo "Changes detected"
+        fi
+    
+    - name: Commit and push results
+      if: steps.changes.outputs.changes == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Get current date for commit message
+        CURRENT_DATE=$(date +'%Y-%m-%d')
+        
+        git add luck_analysis_report.md charts/ reports/ || true
+        git commit -m "🍀 Weekly luck analysis update - $CURRENT_DATE" || exit 0
+        git push
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: luck-analysis-report-${{ github.run_number }}
+        path: |
+          luck_analysis_report.md
+          charts/
+        retention-days: 30
+    
+    - name: Create release (optional)
+      if: steps.changes.outputs.changes == 'true'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: weekly-${{ github.run_number }}
+        release_name: Weekly Luck Analysis - ${{ github.run_number }}
+        body: |
+          📊 Automated weekly fantasy football luck analysis
+          
+          Generated on: ${{ github.event.schedule || 'Manual trigger' }}
+          
+          ### Reports Generated:
+          - Main luck analysis report
+          - Team ranking charts
+          - Win probability analysis
+          
+          Check the [luck analysis report](./luck_analysis_report.md) for detailed results.
+        draft: false
+        prerelease: false
+
+  # Optional: Deploy to GitHub Pages if you want a web version
+  deploy-pages:
+    needs: analyze-luck
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: main
+    
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+    
+    - name: Upload to GitHub Pages
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: './charts'
+    
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v2
