@@ -2,8 +2,9 @@ name: Weekly Fantasy Football Luck Analysis
 
 on:
   schedule:
-    # Runs every Tuesday at 2:00 PM UTC (8:00 AM Central Time)
-    - cron: '0 14 * * 2'
+    # Runs every Tuesday at 2:00 PM UTC (8:00 AM Central Time) during fantasy football season
+    # Only runs September through December (months 9-12)
+    - cron: '0 14 * 9-12 2'
   
   # Allow manual triggering for testing
   workflow_dispatch:
@@ -16,6 +17,8 @@ permissions:
 jobs:
   analyze-luck:
     runs-on: ubuntu-latest
+    outputs:
+      in_season: ${{ steps.season_check.outputs.in_season }}
     
     steps:
     - name: Checkout repository
@@ -46,12 +49,26 @@ jobs:
       run: |
         uv sync --dev
     
+    - name: Check if fantasy football season
+      id: season_check
+      run: |
+        current_month=$(date +%m)
+        if [ "$current_month" -ge 9 ] || [ "$current_month" -le 12 ]; then
+          echo "in_season=true" >> $GITHUB_OUTPUT
+          echo "✅ Currently in fantasy football season (month: $current_month)"
+        else
+          echo "in_season=false" >> $GITHUB_OUTPUT
+          echo "⏸️ Not in fantasy football season (month: $current_month), skipping analysis"
+        fi
+    
     - name: Create required directories
+      if: steps.season_check.outputs.in_season == 'true'
       run: |
         mkdir -p charts
         mkdir -p reports
     
     - name: Run luck analysis
+      if: steps.season_check.outputs.in_season == 'true'
       env:
         # Add your Yahoo API credentials as repository secrets (match .env file names)
         YAHOO_CLIENT_ID: ${{ secrets.YAHOO_CLIENT_ID }}
@@ -64,6 +81,7 @@ jobs:
         uv run python main.py
     
     - name: Check for changes
+      if: steps.season_check.outputs.in_season == 'true'
       id: changes
       run: |
         git add -A
@@ -76,7 +94,7 @@ jobs:
         fi
     
     - name: Commit and push results
-      if: steps.changes.outputs.changes == 'true'
+      if: steps.season_check.outputs.in_season == 'true' && steps.changes.outputs.changes == 'true'
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
@@ -89,6 +107,7 @@ jobs:
         git push
     
     - name: Upload artifacts
+      if: steps.season_check.outputs.in_season == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: luck-analysis-report-${{ github.run_number }}
@@ -98,7 +117,7 @@ jobs:
         retention-days: 30
     
     - name: Create release (optional)
-      if: steps.changes.outputs.changes == 'true'
+      if: steps.season_check.outputs.in_season == 'true' && steps.changes.outputs.changes == 'true'
       uses: softprops/action-gh-release@v2
       with:
         tag_name: weekly-${{ github.run_number }}
@@ -124,7 +143,7 @@ jobs:
   deploy-pages:
     needs: analyze-luck
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && needs.analyze-luck.outputs.in_season == 'true'
     
     steps:
     - name: Checkout
