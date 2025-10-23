@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ggg-luck"
+version = "0.1.0"
+description = "A Python package for connecting to Yahoo Fantasy Football API"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "requests>=2.31.0",
+    "yahoo-fantasy-api>=2.6.0",
+    "python-dotenv>=1.0.0",
+    "cryptography>=41.0.0",
+    "xmltodict>=0.13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[project.scripts]
+ggg-luck = "ggg_luck.main:main"
+ggg-luck-test = "ggg_luck.cli:main"
+ggg-luck-debug = "ggg_luck.debug:analyze_url_components"
+ggg-luck-example = "ggg_luck.example:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ggg_luck"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+]
