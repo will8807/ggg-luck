@@ -1,13 +1,24 @@
-# GGG Luck - Yahoo Fantasy Football API Client
+# 🏈 GGG Luck - Fantasy Football Luck Calculator
 
-A Python package for connecting to the Yahoo Fantasy Football API to retrieve league data, player stats, and more.
+A sophisticated fantasy football analysis tool that calculates team "luck" by comparing actual wins vs. expected wins based on weekly scoring performance and opponent strength.
 
-## Features
+## 🎯 What It Does
 
-- 🏈 Connect to Yahoo Fantasy Football API
-- 🔐 OAuth2 authentication flow
-- 📊 Retrieve league standings, player stats, and team rosters
-- 🧪 Comprehensive test coverage
+- **Connects to Yahoo Fantasy API** with OAuth2 authentication
+- **Analyzes weekly matchups** to determine luck scores
+- **Calculates expected wins** based on scoring vs. all possible opponents  
+- **Generates beautiful reports** with charts and rankings
+- **Automatically detects completed weeks** (excludes in-progress games)
+
+## 📊 Sample Analysis
+
+Check out our [latest luck analysis report](luck_analysis_report.md) to see the tool in action!
+
+### Key Features:
+- 🍀 **Luck Rankings**: See which teams are getting lucky breaks
+- 📈 **Visual Charts**: Comprehensive graphs showing luck distribution
+- ⚖️ **Expected vs Actual Wins**: Compare what records "should be"
+- 🎰 **Extreme Weeks**: Highlight the most lucky/unlucky matchups
 - 🛠️ Easy-to-use CLI tools
 
 ## Installation
