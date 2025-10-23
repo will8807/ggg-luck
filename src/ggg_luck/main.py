@@ -620,15 +620,7 @@ This comprehensive analysis examines team performance across **{completed_weeks}
         
         markdown += f"""
 
-## 📈 Luck Distribution
-
-![Luck Distribution](charts/luck_distribution.png)
-
-The chart above shows the distribution of luck scores across all teams. Positive values indicate lucky teams, while negative values show unlucky teams.
-
----
-
-## 📊 Performance Analysis
+##  Performance Analysis
 
 ### ⚖️ Wins: Actual vs Expected
 
@@ -643,6 +635,30 @@ This analysis reveals which teams have been **schedule beneficiaries** versus **
 ![Luck Distribution](charts/luck_distribution.png)
 
 *Distribution of luck scores across the league - most teams cluster around neutral (0)*
+
+This chart shows the distribution of luck scores across all teams. Positive values indicate lucky teams, while negative values show unlucky teams.
+
+### 🎰 Most Extreme Weeks
+
+*The biggest lucky breaks and unlucky losses of the season*
+
+"""
+        
+        # Add extreme weeks
+        all_weeks = []
+        for metrics in luck_metrics:
+            if metrics.luckiest_week:
+                all_weeks.append(("Luckiest", metrics.luckiest_week, metrics.total_luck_score))
+            if metrics.unluckiest_week:
+                all_weeks.append(("Unluckiest", metrics.unluckiest_week, metrics.total_luck_score))
+        
+        all_weeks.sort(key=lambda x: abs(x[2]), reverse=True)
+        
+        for luck_type, matchup, luck_score in all_weeks[:5]:
+            result = "**WIN**" if matchup.won else "**LOSS**"
+            markdown += f"- **{luck_type}:** {matchup.team_name} Week {matchup.week} - {matchup.team_score:.1f} vs {matchup.opponent_score:.1f} ({result})\n"
+        
+        markdown += f"""
 
 ---
 
@@ -673,28 +689,6 @@ This **heatmap visualization** displays each team's weekly scoring performance w
             markdown += f"| {metrics.team_name} | {trends.avg_score:.1f} | {trends.recent_avg:.1f} | {trend_arrow} {trends.trend_slope:+.1f}/wk | {trends.volatility_index:.0f}% |\n"
         
         markdown += f"""
-
-### 🎰 Most Extreme Weeks
-
-*The biggest lucky breaks and unlucky losses of the season*
-
-"""
-        
-        # Add extreme weeks
-        all_weeks = []
-        for metrics in luck_metrics:
-            if metrics.luckiest_week:
-                all_weeks.append(("Luckiest", metrics.luckiest_week, metrics.total_luck_score))
-            if metrics.unluckiest_week:
-                all_weeks.append(("Unluckiest", metrics.unluckiest_week, metrics.total_luck_score))
-        
-        all_weeks.sort(key=lambda x: abs(x[2]), reverse=True)
-        
-        for luck_type, matchup, luck_score in all_weeks[:5]:
-            result = "**WIN**" if matchup.won else "**LOSS**"
-            markdown += f"- **{luck_type}:** {matchup.team_name} Week {matchup.week} - {matchup.team_score:.1f} vs {matchup.opponent_score:.1f} ({result})\n"
-        
-        markdown += f"""        
 
 ---
 

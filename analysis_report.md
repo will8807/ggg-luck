@@ -47,15 +47,7 @@ This comprehensive analysis examines team performance across **7 weeks** of fant
 | 12 | Shot of Jameson 🍀 | +266.4 | 7-0 | 5-2 | +2 |
 
 
-## 📈 Luck Distribution
-
-![Luck Distribution](charts/luck_distribution.png)
-
-The chart above shows the distribution of luck scores across all teams. Positive values indicate lucky teams, while negative values show unlucky teams.
-
----
-
-## 📊 Performance Analysis
+##  Performance Analysis
 
 ### ⚖️ Wins: Actual vs Expected
 
@@ -70,6 +62,19 @@ This analysis reveals which teams have been **schedule beneficiaries** versus **
 ![Luck Distribution](charts/luck_distribution.png)
 
 *Distribution of luck scores across the league - most teams cluster around neutral (0)*
+
+This chart shows the distribution of luck scores across all teams. Positive values indicate lucky teams, while negative values show unlucky teams.
+
+### 🎰 Most Extreme Weeks
+
+*The biggest lucky breaks and unlucky losses of the season*
+
+- **Luckiest:** Shot of Jameson Week 1 - 87.3 vs 76.0 (**WIN**)
+- **Unluckiest:** Shot of Jameson Week 4 - 132.4 vs 91.4 (**WIN**)
+- **Luckiest:** MarlBurrow Men Week 4 - 120.8 vs 87.1 (**WIN**)
+- **Unluckiest:** MarlBurrow Men Week 7 - 132.2 vs 133.7 (**LOSS**)
+- **Luckiest:** Go On Jalen! Week 5 - 99.3 vs 85.4 (**WIN**)
+
 
 ---
 
@@ -100,17 +105,6 @@ This **heatmap visualization** displays each team's weekly scoring performance w
 | Go On Jalen! | 109.0 | 92.3 | ⬇️ -4.2/wk | 20% |
 | The Hurt Locker | 92.4 | 91.0 | ⬇️ -1.5/wk | 24% |
 
-
-### 🎰 Most Extreme Weeks
-
-*The biggest lucky breaks and unlucky losses of the season*
-
-- **Luckiest:** Shot of Jameson Week 1 - 87.3 vs 76.0 (**WIN**)
-- **Unluckiest:** Shot of Jameson Week 4 - 132.4 vs 91.4 (**WIN**)
-- **Luckiest:** MarlBurrow Men Week 4 - 120.8 vs 87.1 (**WIN**)
-- **Unluckiest:** MarlBurrow Men Week 7 - 132.2 vs 133.7 (**LOSS**)
-- **Luckiest:** Go On Jalen! Week 5 - 99.3 vs 85.4 (**WIN**)
-        
 
 ---
 
