@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 from datetime import datetime
+import numpy as np
 from .api import YahooFantasyAPI
 
 
@@ -23,6 +24,23 @@ class WeeklyMatchup:
 
 
 @dataclass
+class ScoringTrends:
+    """Represents scoring trends and momentum for a team."""
+    team_id: str
+    team_name: str
+    weekly_scores: List[float]
+    avg_score: float
+    score_std: float  # Standard deviation (consistency)
+    trend_slope: float  # Linear regression slope (momentum)
+    recent_avg: float  # Last 3 weeks average
+    peak_week: int  # Week with highest score
+    valley_week: int  # Week with lowest score
+    hot_streak: int  # Current consecutive weeks above average
+    cold_streak: int  # Current consecutive weeks below average
+    volatility_index: float  # Measure of scoring volatility (0-100)
+
+
+@dataclass
 class LuckMetrics:
     """Represents luck metrics for a team."""
     team_id: str
@@ -35,6 +53,7 @@ class LuckMetrics:
     should_have_wins: int
     should_have_losses: int
     luck_differential: int  # actual wins - expected wins
+    scoring_trends: Optional['ScoringTrends'] = None  # Add scoring trends analysis
 
 
 class LuckCalculator:
@@ -199,6 +218,9 @@ class LuckCalculator:
                 should_have_losses = len(matchups) - should_have_wins
                 luck_differential = actual_wins - should_have_wins
                 
+                # Calculate scoring trends
+                scoring_trends = self._calculate_scoring_trends(matchups)
+                
                 metrics = LuckMetrics(
                     team_id=team_id,
                     team_name=team_name,
@@ -209,7 +231,8 @@ class LuckCalculator:
                     weeks_played=len(matchups),
                     should_have_wins=should_have_wins,
                     should_have_losses=should_have_losses,
-                    luck_differential=luck_differential
+                    luck_differential=luck_differential,
+                    scoring_trends=scoring_trends
                 )
                 luck_metrics.append(metrics)
         
@@ -362,6 +385,106 @@ class LuckCalculator:
         
         return round(expected_wins)
     
+    def _calculate_scoring_trends(self, matchups: List[WeeklyMatchup]) -> ScoringTrends:
+        """Calculate scoring trends and momentum for a team."""
+        if not matchups:
+            return None
+            
+        # Sort matchups by week to ensure proper ordering
+        matchups = sorted(matchups, key=lambda m: m.week)
+        
+        team_id = matchups[0].team_id
+        team_name = matchups[0].team_name
+        weekly_scores = [m.team_score for m in matchups]
+        
+        # Basic statistics
+        avg_score = np.mean(weekly_scores)
+        score_std = np.std(weekly_scores)
+        
+        # Calculate trend (linear regression slope)
+        weeks = np.arange(1, len(weekly_scores) + 1)
+        trend_slope = np.polyfit(weeks, weekly_scores, 1)[0] if len(weekly_scores) > 1 else 0
+        
+        # Recent form (last 3 weeks average)
+        recent_avg = np.mean(weekly_scores[-3:]) if len(weekly_scores) >= 3 else avg_score
+        
+        # Peak and valley weeks
+        peak_week = matchups[np.argmax(weekly_scores)].week
+        valley_week = matchups[np.argmin(weekly_scores)].week
+        
+        # Calculate hot/cold streaks
+        hot_streak, cold_streak = self._calculate_streaks(weekly_scores, avg_score)
+        
+        # Volatility index (coefficient of variation * 100)
+        volatility_index = (score_std / avg_score * 100) if avg_score > 0 else 0
+        
+        return ScoringTrends(
+            team_id=team_id,
+            team_name=team_name,
+            weekly_scores=weekly_scores,
+            avg_score=avg_score,
+            score_std=score_std,
+            trend_slope=trend_slope,
+            recent_avg=recent_avg,
+            peak_week=peak_week,
+            valley_week=valley_week,
+            hot_streak=hot_streak,
+            cold_streak=cold_streak,
+            volatility_index=volatility_index
+        )
+    
+    def _calculate_streaks(self, weekly_scores: List[float], avg_score: float) -> Tuple[int, int]:
+        """Calculate current hot and cold streaks."""
+        if not weekly_scores:
+            return 0, 0
+            
+        # Start from the most recent week and work backwards
+        hot_streak = 0
+        cold_streak = 0
+        
+        # Check current streak from the end
+        for i in range(len(weekly_scores) - 1, -1, -1):
+            score = weekly_scores[i]
+            if score > avg_score:
+                if cold_streak == 0:  # Still in hot streak
+                    hot_streak += 1
+                else:  # Hit a cold week, stop counting
+                    break
+            else:
+                if hot_streak == 0:  # Still in cold streak
+                    cold_streak += 1
+                else:  # Hit a hot week, stop counting
+                    break
+                    
+        return hot_streak, cold_streak
+    
+    def _get_trend_indicator(self, trends: Optional[ScoringTrends]) -> str:
+        """Generate a trend indicator string for display."""
+        if not trends:
+            return ""
+            
+        # Momentum indicator
+        if trends.trend_slope > 2:
+            momentum = "📈📈"  # Strong upward
+        elif trends.trend_slope > 0.5:
+            momentum = "📈"     # Upward
+        elif trends.trend_slope < -2:
+            momentum = "📉📉"  # Strong downward 
+        elif trends.trend_slope < -0.5:
+            momentum = "📉"     # Downward
+        else:
+            momentum = "➡️"      # Flat
+            
+        # Streak indicator
+        if trends.hot_streak > 0:
+            streak = f"🔥{trends.hot_streak}"
+        elif trends.cold_streak > 0:
+            streak = f"🧊{trends.cold_streak}"
+        else:
+            streak = ""
+            
+        return f"{momentum}{streak}"
+    
     def display_luck_analysis(self, luck_metrics: List[LuckMetrics]):
         """Display formatted luck analysis results."""
         if not luck_metrics:
@@ -369,9 +492,9 @@ class LuckCalculator:
             return
         
         print(f"\n🍀 FANTASY FOOTBALL LUCK ANALYSIS")
-        print("=" * 60)
-        print(f"{'Rank':<4} {'Team':<20} {'Luck':<8} {'W-L':<6} {'Should Be':<9} {'Diff':<6}")
-        print("-" * 60)
+        print("=" * 80)
+        print(f"{'Rank':<4} {'Team':<20} {'Luck':<8} {'W-L':<6} {'Should Be':<9} {'Diff':<6} {'Trend':<10}")
+        print("-" * 80)
         
         for i, metrics in enumerate(luck_metrics, 1):
             actual_wins = sum(1 for m in [metrics.luckiest_week, metrics.unluckiest_week] if m and m.won)
@@ -380,8 +503,11 @@ class LuckCalculator:
             
             luck_indicator = "🍀" if metrics.total_luck_score > 20 else "💀" if metrics.total_luck_score < -20 else "😐"
             
+            # Generate trend indicator
+            trend_indicator = self._get_trend_indicator(metrics.scoring_trends)
+            
             print(f"{i:<4} {metrics.team_name[:19]:<20} {metrics.avg_luck_per_week:>+6.1f}{luck_indicator} "
-                  f"{actual_record:<6} {should_record:<9} {metrics.luck_differential:>+4}")
+                  f"{actual_record:<6} {should_record:<9} {metrics.luck_differential:>+4} {trend_indicator:<10}")
         
         # Show most extreme weeks
         print(f"\n🎰 MOST EXTREME WEEKS:")
@@ -402,6 +528,29 @@ class LuckCalculator:
             print(f"{luck_type:>7}: {matchup.team_name} Week {matchup.week} "
                   f"({matchup.team_score:.1f} vs {matchup.opponent_score:.1f}, {result}) "
                   f"Luck: {luck_score:+.1f}")
+        
+        # Show scoring trends
+        print(f"\n📈 SCORING TRENDS & MOMENTUM:")
+        print("-" * 50)
+        
+        # Sort by recent form for trends display
+        trends_sorted = sorted([m for m in luck_metrics if m.scoring_trends], 
+                             key=lambda x: x.scoring_trends.recent_avg, reverse=True)
+        
+        for metrics in trends_sorted[:10]:  # Top 10
+            trends = metrics.scoring_trends
+            momentum = "📈" if trends.trend_slope > 1 else "📉" if trends.trend_slope < -1 else "➡️"
+            streak_info = ""
+            
+            if trends.hot_streak > 0:
+                streak_info = f"🔥{trends.hot_streak}W"
+            elif trends.cold_streak > 0:
+                streak_info = f"🧊{trends.cold_streak}W"
+            else:
+                streak_info = "😐"
+                
+            print(f"{metrics.team_name[:20]:<20} Avg: {trends.avg_score:>6.1f} Recent: {trends.recent_avg:>6.1f} "
+                  f"{momentum} {streak_info} Vol: {trends.volatility_index:>4.0f}%")
 
     def generate_markdown_report(self, luck_metrics: List[LuckMetrics], league_name: str = "Fantasy League") -> str:
         """Generate a comprehensive markdown report with charts."""
@@ -415,24 +564,42 @@ class LuckCalculator:
         self._create_luck_ranking_chart(luck_metrics, charts_dir)
         self._create_luck_distribution_chart(luck_metrics, charts_dir)
         self._create_wins_comparison_chart(luck_metrics, charts_dir)
+        self._create_scoring_trends_chart(luck_metrics, charts_dir)
         
         # Generate markdown content
         current_date = datetime.now().strftime("%B %d, %Y")
         completed_weeks = max(m.weeks_played for m in luck_metrics) if luck_metrics else 0
         
-        markdown = f"""# 🏈 Fantasy Football Luck Analysis Report
+        markdown = f"""# 🏈 {league_name} - Fantasy Football Analysis Report
 
-**League:** {league_name}  
-**Analysis Date:** {current_date}  
-**Weeks Analyzed:** {completed_weeks} completed weeks
+> **Analysis Date:** {current_date} | **Weeks Analyzed:** {completed_weeks} completed weeks
+
+---
+
+## � Table of Contents
+- [Executive Summary](#-executive-summary)
+- [Luck Rankings](#-luck-rankings) 
+- [Weekly Scoring Trends](#-weekly-scoring-trends)
+- [Performance Analysis](#-performance-analysis)
+- [Methodology](#-methodology)
 
 ---
 
 ## 📊 Executive Summary
 
-This report analyzes team "luck" by comparing actual wins vs. expected wins based on weekly scoring performance. Teams that consistently win against weaker opponents while losing to stronger ones are considered "unlucky," while teams that beat stronger opponents or lose to weaker ones are "lucky."
+This comprehensive analysis examines team performance across **{completed_weeks} weeks** of fantasy football action. We analyze both **luck factors** (schedule strength and opponent matchups) and **scoring trends** (momentum and consistency) to provide actionable insights for your league.
+
+### Key Findings:
+- **Most Lucky Team:** Teams with positive luck scores are winning more than their scoring suggests
+- **Most Unlucky Team:** Teams with negative luck scores are underperforming their scoring ability
+- **Hottest Team:** Teams with strong upward scoring trends are building momentum
+- **Most Consistent:** Teams with low volatility provide reliable weekly production
+
+---
 
 ## 🏆 Luck Rankings
+
+*Teams ranked by luck score - negative scores indicate unlucky teams who should have better records*
 
 ![Luck Rankings](charts/luck_rankings.png)
 
@@ -459,13 +626,57 @@ This report analyzes team "luck" by comparing actual wins vs. expected wins base
 
 The chart above shows the distribution of luck scores across all teams. Positive values indicate lucky teams, while negative values show unlucky teams.
 
-## ⚖️ Wins: Actual vs Expected
+---
+
+## 📊 Performance Analysis
+
+### ⚖️ Wins: Actual vs Expected
+
+*Comparing real records against "should have" records based on scoring performance*
 
 ![Wins Comparison](charts/wins_comparison.png)
 
-This chart compares each team's actual wins against what they "should have" won based on their scoring performance.
+This analysis reveals which teams have been **schedule beneficiaries** versus **schedule victims**. The orange bars show what each team's record should be based purely on their scoring output, while blue bars show their actual record.
 
-## 🎰 Most Extreme Weeks
+### 🎲 Luck Distribution
+
+![Luck Distribution](charts/luck_distribution.png)
+
+*Distribution of luck scores across the league - most teams cluster around neutral (0)*
+
+---
+
+## 📈 Weekly Scoring Trends
+
+*Track team momentum, consistency, and recent form to predict future performance*
+
+![Scoring Trends](charts/scoring_trends.png)
+
+This visualization reveals crucial **momentum patterns** and **scoring consistency** across all teams. The solid lines show actual weekly scores, while dashed trend lines indicate each team's trajectory. Teams with strong upward trends are building momentum for playoff pushes.
+
+### 🔥 Momentum Analysis
+
+*Teams sorted by recent form (last 3 weeks average)*
+
+| Team | Avg Score | Recent Form | Trend | Volatility |
+|------|-----------|-------------|-------|------------|
+"""
+        
+        # Add momentum analysis table
+        trends_sorted = sorted([m for m in luck_metrics if m.scoring_trends], 
+                             key=lambda x: x.scoring_trends.recent_avg, reverse=True)
+        
+        for metrics in trends_sorted:
+            trends = metrics.scoring_trends
+            trend_arrow = "⬆️" if trends.trend_slope > 1 else "⬇️" if trends.trend_slope < -1 else "➡️"
+            
+            markdown += f"| {metrics.team_name} | {trends.avg_score:.1f} | {trends.recent_avg:.1f} | {trend_arrow} {trends.trend_slope:+.1f}/wk | {trends.volatility_index:.0f}% |\n"
+        
+        markdown += f"""
+
+### 🎰 Most Extreme Weeks
+
+*The biggest lucky breaks and unlucky losses of the season*
 
 """
         
@@ -483,24 +694,41 @@ This chart compares each team's actual wins against what they "should have" won 
             result = "**WIN**" if matchup.won else "**LOSS**"
             markdown += f"- **{luck_type}:** {matchup.team_name} Week {matchup.week} - {matchup.team_score:.1f} vs {matchup.opponent_score:.1f} ({result})\n"
         
-        markdown += f"""
-
-## 📊 Methodology
-
-**Luck Score Calculation:**
-- Each week, we calculate how many teams you would have beaten with your score
-- Compare your actual opponent's strength to the average opponent
-- Positive luck = beating stronger opponents or losing to weaker ones
-- Negative luck = losing to stronger opponents or beating weaker ones
-
-**Expected Wins:**
-- Based on your weekly scoring performance vs. all possible opponents
-- Shows what your record "should be" in a perfectly fair scheduling system
+        markdown += f"""        
 
 ---
 
-*Generated by GGG Luck Fantasy Football Analyzer*  
+## � Methodology
+
+### Luck Score Calculation
+- **Weekly Analysis**: For each week, calculate how many teams you would have beaten with your score
+- **Opponent Strength**: Compare your actual opponent's strength to average opponent difficulty
+- **Luck Factors**: 
+  - ✅ **Positive Luck**: Beating stronger opponents or losing to weaker ones
+  - ❌ **Negative Luck**: Losing to stronger opponents or beating weaker ones
+
+### Scoring Trends Analysis
+- **Momentum**: Linear regression slope showing points gained/lost per week
+- **Recent Form**: Average scoring over last 3 weeks
+- **Volatility**: Standard deviation of scoring (consistency measure)
+- **Streaks**: Consecutive weeks above/below personal average
+
+### Expected Wins Model
+- **Fair Scheduling**: Calculate record based on scoring vs. all possible opponents each week
+- **Schedule Strength**: Account for actual opponents faced vs. league average
+- **Performance Prediction**: Use trends to project future performance
+
+---
+
+<div align="center">
+
+**📈 Generated by GGG Luck Fantasy Football Analyzer**
+
 *Analysis Date: {current_date}*
+
+*Unlock the patterns behind your fantasy success*
+
+</div>
 """
         
         return markdown
@@ -603,7 +831,69 @@ This chart compares each team's actual wins against what they "should have" won 
         plt.savefig(f'{charts_dir}/wins_comparison.png', dpi=300, bbox_inches='tight')
         plt.close()
 
-    def save_markdown_report(self, luck_metrics: List[LuckMetrics], filename: str = "luck_analysis_report.md", league_name: str = "Fantasy League"):
+    def _create_scoring_trends_chart(self, luck_metrics: List[LuckMetrics], charts_dir: str):
+        """Create a line chart showing weekly scoring trends for all teams."""
+        plt.figure(figsize=(14, 8))
+        
+        # Filter teams with scoring trends
+        teams_with_trends = [m for m in luck_metrics if m.scoring_trends]
+        
+        if not teams_with_trends:
+            return
+            
+        # Create color palette
+        colors = plt.cm.Set3(np.linspace(0, 1, len(teams_with_trends)))
+        
+        for i, metrics in enumerate(teams_with_trends):
+            trends = metrics.scoring_trends
+            weeks = range(1, len(trends.weekly_scores) + 1)
+            
+            # Plot the scoring line
+            plt.plot(weeks, trends.weekly_scores, 
+                    color=colors[i], marker='o', linewidth=2, markersize=4, 
+                    label=f"{metrics.team_name[:12]} ({trends.avg_score:.1f})", alpha=0.8)
+            
+            # Add trend line
+            if len(trends.weekly_scores) > 1:
+                z = np.polyfit(weeks, trends.weekly_scores, 1)
+                trend_line = np.poly1d(z)
+                plt.plot(weeks, trend_line(weeks), 
+                        color=colors[i], linestyle='--', alpha=0.5, linewidth=1)
+        
+        # Add league average line
+        all_scores = []
+        max_weeks = max(len(m.scoring_trends.weekly_scores) for m in teams_with_trends)
+        
+        for week in range(1, max_weeks + 1):
+            week_scores = [m.scoring_trends.weekly_scores[week-1] 
+                          for m in teams_with_trends 
+                          if len(m.scoring_trends.weekly_scores) >= week]
+            if week_scores:
+                all_scores.append(np.mean(week_scores))
+        
+        if all_scores:
+            plt.plot(range(1, len(all_scores) + 1), all_scores, 
+                    color='black', linewidth=3, linestyle='-', 
+                    label='League Average', alpha=0.7)
+        
+        plt.xlabel('Week', fontsize=12, fontweight='bold')
+        plt.ylabel('Points Scored', fontsize=12, fontweight='bold')
+        plt.title('Weekly Scoring Trends by Team\\n(Dashed lines show trend direction)', fontsize=14, fontweight='bold', pad=20)
+        plt.grid(True, alpha=0.3)
+        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+        
+        # Set reasonable axis limits
+        if teams_with_trends:
+            all_weekly_scores = [score for m in teams_with_trends for score in m.scoring_trends.weekly_scores]
+            min_score = min(all_weekly_scores) * 0.9
+            max_score = max(all_weekly_scores) * 1.1
+            plt.ylim(min_score, max_score)
+        
+        plt.tight_layout()
+        plt.savefig(f'{charts_dir}/scoring_trends.png', dpi=300, bbox_inches='tight')
+        plt.close()
+
+    def save_markdown_report(self, luck_metrics: List[LuckMetrics], filename: str = "analysis_report.md", league_name: str = "Fantasy League"):
         """Generate and save markdown report to file."""
         markdown_content = self.generate_markdown_report(luck_metrics, league_name)
         
@@ -666,7 +956,7 @@ def main():
         
         # Generate markdown report
         print(f"\n📊 Generating markdown report...")
-        calculator.save_markdown_report(luck_metrics, "luck_analysis_report.md", "Gang of Gridiron Gurus")
+        calculator.save_markdown_report(luck_metrics, "analysis_report.md", "Gang of Gridiron Gurus")
         
         print(f"\n💡 Luck Score Explanation:")
         print("  • Positive scores = Lucky (winning more than expected)")

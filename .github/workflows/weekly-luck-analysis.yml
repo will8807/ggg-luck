@@ -84,7 +84,7 @@ jobs:
         # Get current date for commit message
         CURRENT_DATE=$(date +'%Y-%m-%d')
         
-        git add luck_analysis_report.md charts/ reports/ || true
+        git add analysis_report.md charts/ reports/ || true
         git commit -m "🍀 Weekly luck analysis update - $CURRENT_DATE" || exit 0
         git push
     
@@ -93,7 +93,7 @@ jobs:
       with:
         name: luck-analysis-report-${{ github.run_number }}
         path: |
-          luck_analysis_report.md
+          analysis_report.md
           charts/
         retention-days: 30
     
@@ -113,11 +113,11 @@ jobs:
           - Team ranking charts
           - Win probability analysis
           
-          Check the [luck analysis report](./luck_analysis_report.md) for detailed results.
+          Check the [analysis report](./analysis_report.md) for detailed results.
         draft: false
         prerelease: false
         files: |
-          luck_analysis_report.md
+          analysis_report.md
           charts/*.png
 
   # Optional: Deploy to GitHub Pages if you want a web version

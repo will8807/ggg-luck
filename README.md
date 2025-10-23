@@ -12,7 +12,7 @@ A sophisticated fantasy football analysis tool that calculates team "luck" by co
 
 ## 📊 Sample Analysis
 
-Check out our [latest luck analysis report](luck_analysis_report.md) to see the tool in action!
+Check out our [latest analysis report](analysis_report.md) to see the tool in action!
 
 ### Key Features:
 - 🍀 **Luck Rankings**: See which teams are getting lucky breaks
@@ -22,7 +22,7 @@ Check out our [latest luck analysis report](luck_analysis_report.md) to see the 
 
 ## 🏗️ What This Generates
 
-- **Comprehensive Markdown Report** ([see example](luck_analysis_report.md))
+- **Comprehensive Markdown Report** ([see example](analysis_report.md))
 - **Interactive Charts** showing luck rankings, distribution, and win comparisons
 - **GitHub-ready visualizations** with professional formatting
 - **Detailed team analysis** with should-have records and luck differentials
@@ -69,7 +69,7 @@ uv run ggg-luck-example
 uv run ggg-luck-analyze
 
 # 3. View generated files:
-# - luck_analysis_report.md (main report)
+# - analysis_report.md (main report)
 # - charts/luck_rankings.png
 # - charts/luck_distribution.png  
 # - charts/wins_comparison.png
@@ -219,7 +219,7 @@ python test_workflow_locally.py
 ```
 
 ### What Gets Generated Automatically
-- 📊 Updated `luck_analysis_report.md` with latest data  
+- 📊 Updated `analysis_report.md` with latest data  
 - 📈 Fresh charts in `/charts` directory
 - 🏷️ Tagged releases for each week's analysis
 - 🌐 Optional GitHub Pages deployment
