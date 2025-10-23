@@ -25,7 +25,7 @@ jobs:
         fetch-depth: 0
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.12'
     
@@ -35,7 +35,7 @@ jobs:
         version: "latest"
     
     - name: Cache uv dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/uv
         key: ${{ runner.os }}-uv-${{ hashFiles('pyproject.toml') }}
@@ -89,7 +89,7 @@ jobs:
         git push
     
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: luck-analysis-report-${{ github.run_number }}
         path: |
@@ -99,12 +99,10 @@ jobs:
     
     - name: Create release (optional)
       if: steps.changes.outputs.changes == 'true'
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: weekly-${{ github.run_number }}
-        release_name: Weekly Luck Analysis - ${{ github.run_number }}
+        name: Weekly Luck Analysis - ${{ github.run_number }}
         body: |
           📊 Automated weekly fantasy football luck analysis
           
@@ -118,6 +116,9 @@ jobs:
           Check the [luck analysis report](./luck_analysis_report.md) for detailed results.
         draft: false
         prerelease: false
+        files: |
+          luck_analysis_report.md
+          charts/*.png
 
   # Optional: Deploy to GitHub Pages if you want a web version
   deploy-pages:
@@ -132,13 +133,13 @@ jobs:
         ref: main
     
     - name: Setup Pages
-      uses: actions/configure-pages@v3
+      uses: actions/configure-pages@v4
     
     - name: Upload to GitHub Pages
-      uses: actions/upload-pages-artifact@v2
+      uses: actions/upload-pages-artifact@v3
       with:
         path: './charts'
     
     - name: Deploy to GitHub Pages
       id: deployment
-      uses: actions/deploy-pages@v2
+      uses: actions/deploy-pages@v4
