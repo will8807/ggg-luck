@@ -19,98 +19,133 @@ Check out our [latest luck analysis report](luck_analysis_report.md) to see the 
 - 📈 **Visual Charts**: Comprehensive graphs showing luck distribution
 - ⚖️ **Expected vs Actual Wins**: Compare what records "should be"
 - 🎰 **Extreme Weeks**: Highlight the most lucky/unlucky matchups
-- 🛠️ Easy-to-use CLI tools
 
-## Installation
+## 🏗️ What This Generates
 
-This project uses [uv](https://github.com/astral-sh/uv) for dependency management.
+- **Comprehensive Markdown Report** ([see example](luck_analysis_report.md))
+- **Interactive Charts** showing luck rankings, distribution, and win comparisons
+- **GitHub-ready visualizations** with professional formatting
+- **Detailed team analysis** with should-have records and luck differentials
 
-```bash
-# Clone the repository
-git clone https://github.com/will8807/ggg-luck.git
-cd ggg-luck
+## � Available Commands
 
-# Install dependencies
-uv sync
-```
+- `ggg-luck-analyze` - Run complete luck analysis with markdown report and charts
+- `ggg-luck-example` - Interactive authentication setup and testing
+- `ggg-luck-debug` - Debug API connections and configurations
+- `ggg-luck-test` - Test Yahoo API connectivity
 
-## Setup
+## �📋 Prerequisites
 
-### 1. Create Yahoo Developer App
+### Yahoo Developer App Setup
 
 1. Go to [Yahoo Developer Console](https://developer.yahoo.com/apps/)
 2. Create a new app with these settings:
    - **Application Type**: Web Application
-   - **Callback Domain**: localhost
+   - **Callback Domain**: localhost  
    - **API Permissions**: Fantasy Sports (Read)
 3. Note your Client ID and Client Secret
 
-### 2. Configure Environment Variables
+### Environment Setup
 
 ```bash
 # Copy the example environment file
 cp .env.example .env
 
-# Edit .env and add your credentials
+# Edit .env with your Yahoo API credentials:
 YAHOO_CLIENT_ID=your_client_id_here
 YAHOO_CLIENT_SECRET=your_client_secret_here
-YAHOO_REDIRECT_URI=http://localhost:8080/callback
+YAHOO_REDIRECT_URI=https://localhost:8443/callback
 ```
 
-### 3. Test Connection
+## 💻 Usage Examples
+
+### Complete Analysis Workflow
 
 ```bash
-# Test your API credentials
-uv run ggg-luck-test
-```
-
-## Usage
-
-### CLI Tools
-
-```bash
-# Test API connection
-uv run ggg-luck-test
-
-# Run authentication example
+# 1. Authenticate with Yahoo (one-time setup)
 uv run ggg-luck-example
 
-# Run main application
-uv run ggg-luck
+# 2. Run full luck analysis (generates report + charts)
+uv run ggg-luck-analyze
+
+# 3. View generated files:
+# - luck_analysis_report.md (main report)
+# - charts/luck_rankings.png
+# - charts/luck_distribution.png  
+# - charts/wins_comparison.png
 ```
 
-### Python API
+### Programmatic Usage
 
 ```python
-from ggg_luck.yahoo_api import YahooFantasyAPI
+from ggg_luck.main import LuckCalculator
+from ggg_luck.api import YahooFantasyAPI
 
-# Initialize the API client
+# Initialize components
 api = YahooFantasyAPI()
+calculator = LuckCalculator(api)
 
-# Get authorization URL
-auth_url = api.get_auth_url()
-print(f"Visit: {auth_url}")
+# Run analysis for a specific league
+league_key = "461.l.168803"  # Your league key
+luck_metrics = calculator.analyze_team_luck(league_key)
 
-# Exchange authorization code for token
-auth_code = input("Enter auth code: ")
-token_data = api.exchange_code_for_token(auth_code)
+# Generate markdown report with charts
+calculator.save_markdown_report(luck_metrics, "my_report.md", "My League")
 
-# Now you can make API calls
-leagues = api.get_user_leagues("nfl")
-standings = api.get_league_standings("league_key_here")
+# Display console results
+calculator.display_luck_analysis(luck_metrics)
 ```
 
-### Available API Methods
+### Core Features
 
-- `get_user_leagues(game_key)` - Get user's fantasy leagues
-- `get_league_info(league_key)` - Get league information
-- `get_league_standings(league_key)` - Get league standings
-- `get_team_info(team_key)` - Get team information
-- `get_team_roster(team_key, week)` - Get team roster
-- `get_league_players(league_key)` - Get league players
-- `get_player_stats(player_key, week)` - Get player statistics
+- **Automatic Week Detection** - Only analyzes completed weeks
+- **OAuth2 HTTPS Authentication** - Secure token management with automatic refresh
+- **Sophisticated Luck Algorithm** - Compares actual vs expected performance
+- **Professional Visualizations** - matplotlib/seaborn charts with proper styling
+- **GitHub Integration** - Markdown reports ready for repository hosting
 
-## Development
+## 🏗️ Project Structure
+
+```
+ggg-luck/
+├── src/ggg_luck/
+│   ├── main.py              # Core luck calculation and report generation
+│   ├── api/
+│   │   ├── yahoo_api.py     # Yahoo Fantasy API client with OAuth2
+│   │   └── oauth_server.py  # HTTPS callback server for authentication
+│   ├── cli_tools/
+│   │   ├── cli.py           # Command-line utilities
+│   │   └── example.py       # Interactive authentication setup
+│   └── utils/
+│       └── debug.py         # Debugging and diagnostics
+├── charts/                  # Generated visualization files
+│   ├── luck_rankings.png
+│   ├── luck_distribution.png
+│   └── wins_comparison.png
+├── tests/                   # Unit tests
+├── luck_analysis_report.md  # Generated analysis report
+├── pyproject.toml          # Project configuration with CLI scripts
+└── .env.example            # Environment template
+```
+
+## 🔐 Authentication & Security
+
+### HTTPS OAuth2 Flow
+1. **Secure HTTPS Server**: Automatically starts on localhost:8443 with self-signed certificates
+2. **Yahoo Authorization**: Opens browser to Yahoo's OAuth consent page
+3. **Secure Token Exchange**: Handles callback and exchanges authorization code for tokens
+4. **Automatic Refresh**: Tokens automatically refresh when expired
+5. **Environment Storage**: Securely stores credentials in `.env` file
+
+### Technical Features
+
+- **Week Completion Detection**: Automatically excludes incomplete/ongoing games
+- **Robust XML Parsing**: Handles Yahoo's XML API responses with comprehensive error handling
+- **Professional Visualizations**: High-quality charts (300 DPI) suitable for presentations
+- **GitHub Integration**: Generated reports render perfectly on GitHub with embedded images
+- **Comprehensive Logging**: Detailed progress tracking and error diagnostics
+
+## 🧪 Development
 
 ### Running Tests
 
@@ -129,47 +164,75 @@ uv run pytest tests/test_yahoo_api.py -v
 
 ```
 ggg-luck/
-├── src/
-│   └── ggg_luck/
-│       ├── __init__.py
-│       ├── main.py          # Main application
-│       ├── yahoo_api.py     # Yahoo API client
-│       ├── cli.py           # CLI tools
-│       └── example.py       # Usage examples
-├── tests/
-│   ├── test_main.py
-│   └── test_yahoo_api.py
-├── .env.example             # Environment template
-├── pyproject.toml          # Project configuration
-└── README.md
+├── src/ggg_luck/
+│   ├── main.py              # Core luck calculation and report generation
+│   ├── api/
+│   │   ├── yahoo_api.py     # Yahoo Fantasy API client with OAuth2
+│   │   └── oauth_server.py  # HTTPS callback server for authentication
+│   ├── cli_tools/
+│   │   ├── cli.py           # Command-line utilities
+│   │   └── example.py       # Interactive authentication setup
+│   └── utils/
+│       └── debug.py         # Debugging and diagnostics
+├── charts/                  # Generated visualization files
+│   ├── luck_rankings.png
+│   ├── luck_distribution.png
+│   └── wins_comparison.png
+├── tests/                   # Unit tests
+├── luck_analysis_report.md  # Generated analysis report
+├── pyproject.toml          # Project configuration with CLI scripts
+└── .env.example            # Environment template
 ```
 
-## Authentication Flow
+## 🔐 Authentication & Security
 
-1. **Get Authorization URL**: Call `get_auth_url()` to get the Yahoo OAuth URL
-2. **User Authorization**: User visits URL and authorizes your app
-3. **Exchange Code**: Use the callback code with `exchange_code_for_token()`
-4. **Make API Calls**: Use the access token for all subsequent API requests
-5. **Token Refresh**: Automatically refresh tokens when they expire
+### HTTPS OAuth2 Flow
+1. **Secure HTTPS Server**: Automatically starts on localhost:8443 with self-signed certificates
+2. **Yahoo Authorization**: Opens browser to Yahoo's OAuth consent page
+3. **Secure Token Exchange**: Handles callback and exchanges authorization code for tokens
+4. **Automatic Refresh**: Tokens automatically refresh when expired
+5. **Environment Storage**: Securely stores credentials in `.env` file
 
-## Error Handling
+### Technical Features
 
-The API client includes comprehensive error handling:
+- **Week Completion Detection**: Automatically excludes incomplete/ongoing games
+- **Robust XML Parsing**: Handles Yahoo's XML API responses with comprehensive error handling
+- **Professional Visualizations**: High-quality charts (300 DPI) suitable for presentations
+- **GitHub Integration**: Generated reports render perfectly on GitHub with embedded images
+- **Comprehensive Logging**: Detailed progress tracking and error diagnostics
 
-- **Missing Credentials**: Clear error messages for setup issues
-- **Token Expiration**: Automatic token refresh when possible
-- **API Errors**: Proper HTTP error handling with meaningful messages
-- **Network Issues**: Graceful handling of connection problems
+## 🧪 Development
 
-## Contributing
+```bash
+# Run tests
+uv run pytest
+
+# Run with coverage
+uv run pytest --cov=ggg_luck
+
+# Test specific functionality
+uv run pytest tests/test_yahoo_api.py -v
+```
+
+## 🤝 Contributing
+
+This project is built for the "Gang of Gridiron Gurus" fantasy league, but the code is designed to work with any Yahoo Fantasy Football league. Feel free to fork and adapt for your own league!
 
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Add tests for new functionality
-5. Run the test suite
-6. Submit a pull request
+5. Run the test suite (`uv run pytest`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
-## License
+## 📄 License
 
-This project uses the Yahoo Fantasy Sports API and is subject to Yahoo's Terms of Service.
+MIT License - feel free to use this for your own fantasy league analysis!
+
+**Note**: This project uses the Yahoo Fantasy Sports API and is subject to Yahoo's Terms of Service.
+
+---
+
+*Built with ❤️ for fantasy football fanatics who love data-driven insights*
