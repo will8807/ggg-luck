@@ -30,6 +30,7 @@ Check out our [latest analysis report](analysis_report.md) to see the tool in ac
 ## � Available Commands
 
 - `ggg-luck-analyze` - Run complete luck analysis with markdown report and charts
+- `ggg-luck-current-week` - Quick summary of luck for the current week only
 - `ggg-luck-example` - Interactive authentication setup and testing
 - `ggg-luck-debug` - Debug API connections and configurations
 - `ggg-luck-test` - Test Yahoo API connectivity
@@ -68,12 +69,28 @@ uv run ggg-luck-example
 # 2. Run full luck analysis (generates report + charts)
 uv run ggg-luck-analyze
 
-# 3. View generated files:
+# 3. Quick current week summary only
+uv run ggg-luck-current-week
+
+# 4. View generated files:
 # - analysis_report.md (main report)
 # - charts/luck_rankings.png
 # - charts/luck_distribution.png  
 # - charts/wins_comparison.png
 ```
+
+### Quick Current Week Analysis
+
+```bash
+# Get just the current week's luck summary
+uv run ggg-luck-current-week
+```
+
+This will show:
+- Luck scores for the most recently completed week
+- Team scores and matchup results
+- Luckiest and unluckiest teams of the week
+- No file generation - just console output
 
 ### Programmatic Usage
 
@@ -94,6 +111,25 @@ calculator.save_markdown_report(luck_metrics, "my_report.md", "My League")
 
 # Display console results
 calculator.display_luck_analysis(luck_metrics)
+
+# Get current week summary only
+week_summary = calculator.get_current_week_summary(league_key)
+calculator.display_current_week_summary(week_summary)
+```
+
+### Command Line Options
+
+```bash
+# Full analysis (default)
+uv run ggg-luck-analyze
+
+# Current week only using command-line argument
+uv run ggg-luck-analyze --current-week
+# or
+uv run ggg-luck-analyze -w
+
+# Dedicated current week command
+uv run ggg-luck-current-week
 ```
 
 ### Core Features

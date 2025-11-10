@@ -31,6 +31,7 @@ ggg-luck-test = "ggg_luck.cli_tools.cli:main"
 ggg-luck-debug = "ggg_luck.utils.debug:analyze_url_components"
 ggg-luck-example = "ggg_luck.cli_tools.example:main"
 ggg-luck-analyze = "ggg_luck.main:main"
+ggg-luck-current-week = "ggg_luck.main:current_week_main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

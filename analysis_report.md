@@ -1,6 +1,6 @@
 # 🏈 Gang of Gridiron Gurus - Fantasy Football Analysis Report
 
-> **Analysis Date:** October 22, 2025 | **Weeks Analyzed:** 7 completed weeks
+> **Analysis Date:** November 09, 2025 | **Weeks Analyzed:** 9 completed weeks
 
 ---
 
@@ -15,7 +15,7 @@
 
 ## 📊 Executive Summary
 
-This comprehensive analysis examines team performance across **7 weeks** of fantasy football action. We analyze both **luck factors** (schedule strength and opponent matchups) and **scoring trends** (momentum and consistency) to provide actionable insights for your league.
+This comprehensive analysis examines team performance across **9 weeks** of fantasy football action. We analyze both **luck factors** (schedule strength and opponent matchups) and **scoring trends** (momentum and consistency) to provide actionable insights for your league.
 
 ### Key Findings:
 - **Most Lucky Team:** Teams with positive luck scores are winning more than their scoring suggests
@@ -33,18 +33,18 @@ This comprehensive analysis examines team performance across **7 weeks** of fant
 
 | Rank | Team | Luck Score | Record | Should Be | Diff |
 |------|------|------------|--------|-----------|------|
-| 1 | MarlBurrow Men 💀 | -213.6 | 1-6 | 3-4 | -2 |
-| 2 | Where Shaquon at? 💀 | -133.6 | 4-3 | 5-2 | -1 |
-| 3 | Bye Week All-Stars 💀 | -117.3 | 2-5 | 3-4 | -1 |
-| 4 | The chain gang 💀 | -64.5 | 3-4 | 4-3 | -1 |
-| 5 | Stèrby FFC 💀 | -26.4 | 2-5 | 2-5 | +0 |
-| 6 | The Hurt Locker 💀 | -8.2 | 2-5 | 2-5 | +0 |
-| 7 | Josh & Junk 😐 | +4.5 | 3-4 | 3-4 | +0 |
-| 8 | Little Kittle Lover 🍀 | +10.0 | 4-3 | 4-3 | +0 |
-| 9 | Let Him Cook 🍀 | +22.7 | 4-3 | 4-3 | +0 |
-| 10 | Last Second Kicker 🍀 | +104.5 | 5-2 | 4-3 | +1 |
-| 11 | Go On Jalen! 🍀 | +155.5 | 5-2 | 4-3 | +1 |
-| 12 | Shot of Jameson 🍀 | +266.4 | 7-0 | 5-2 | +2 |
+| 1 | Bye Week All-Stars 💀 | -191.8 | 2-7 | 4-5 | -2 |
+| 2 | The chain gang 💀 | -162.7 | 3-6 | 5-4 | -2 |
+| 3 | Where Shaquon at? 💀 | -122.7 | 5-4 | 6-3 | -1 |
+| 4 | MarlBurrow Men 💀 | -70.0 | 3-6 | 4-5 | -1 |
+| 5 | Stèrby FFC 💀 | -28.2 | 3-6 | 3-6 | +0 |
+| 6 | Little Kittle Lover 💀 | -11.8 | 5-4 | 5-4 | +0 |
+| 7 | The Hurt Locker 🍀 | +30.0 | 4-5 | 4-5 | +0 |
+| 8 | Josh & Junk 🍀 | +53.6 | 5-4 | 4-5 | +1 |
+| 9 | Let Him Cook 🍀 | +55.5 | 6-3 | 5-4 | +1 |
+| 10 | Go On Jalen! 🍀 | +91.8 | 5-4 | 4-5 | +1 |
+| 11 | Last Second Kicker 🍀 | +115.5 | 6-3 | 5-4 | +1 |
+| 12 | Shot of Jameson 🍀 | +240.9 | 7-2 | 5-4 | +2 |
 
 
 ##  Performance Analysis
@@ -70,15 +70,36 @@ This chart shows the distribution of luck scores across all teams. Positive valu
 *The biggest lucky breaks and unlucky losses of the season*
 
 - **Luckiest:** Shot of Jameson Week 1 - 87.3 vs 76.0 (**WIN**)
-- **Unluckiest:** Shot of Jameson Week 4 - 132.4 vs 91.4 (**WIN**)
-- **Luckiest:** MarlBurrow Men Week 4 - 120.8 vs 87.1 (**WIN**)
-- **Unluckiest:** MarlBurrow Men Week 7 - 132.2 vs 133.7 (**LOSS**)
-- **Luckiest:** Go On Jalen! Week 5 - 99.3 vs 85.4 (**WIN**)
+- **Unluckiest:** Shot of Jameson Week 8 - 73.5 vs 133.7 (**LOSS**)
+- **Luckiest:** Bye Week All-Stars Week 6 - 101.0 vs 79.3 (**WIN**)
+- **Unluckiest:** Bye Week All-Stars Week 5 - 117.1 vs 118.8 (**LOSS**)
+- **Luckiest:** The chain gang Week 7 - 115.7 vs 109.4 (**WIN**)
 
 
 ---
 
-## 📈 Weekly Scoring Trends
+## 📅 Weekly Luck Breakdown
+
+*Detailed analysis of the luckiest and unluckiest performances from each week*
+
+This section tracks the most fortunate and unfortunate performances on a week-by-week basis, providing insight into how luck has played out throughout the season.
+
+| Week | 🍀 Luckiest Performance | 💀 Unluckiest Performance |
+|------|------------------------|---------------------------|
+| 1 | Shot of Jameson (87.3 vs MarlBurrow Men 76.0, W) +90.0 | Where Shaquon at? (107.6 vs Let Him Cook 113.4, L) -90.0 |
+| 2 | Stèrby FFC (97.9 vs The chain gang 96.8, W) +90.0 | Josh & Junk (118.9 vs Where Shaquon at? 125.0, L) -80.9 |
+| 3 | Shot of Jameson (106.0 vs Last Second Kicker 77.0, W) +62.7 | The Hurt Locker (110.1 vs The chain gang 141.7, L) -64.5 |
+| 4 | Let Him Cook (120.7 vs Bye Week All-Stars 99.7, W) +51.8 | Last Second Kicker (108.6 vs Go On Jalen! 124.2, L) -50.0 |
+| 5 | Go On Jalen! (99.3 vs The Hurt Locker 85.4, W) +91.8 | Bye Week All-Stars (117.1 vs Josh & Junk 118.8, L) -68.2 |
+| 6 | Little Kittle Lover (88.4 vs The chain gang 87.8, W) +79.1 | MarlBurrow Men (107.4 vs Where Shaquon at? 135.2, L) -73.6 |
+| 7 | Josh & Junk (101.1 vs The Hurt Locker 60.8, W) +91.8 | MarlBurrow Men (132.2 vs Little Kittle Lover 133.7, L) -90.0 |
+| 8 | MarlBurrow Men (96.3 vs The chain gang 64.6, W) +73.6 | Bye Week All-Stars (113.6 vs Little Kittle Lover 118.1, L) -59.1 |
+| 9 | MarlBurrow Men (90.2 vs Bye Week All-Stars 77.9, W) +70.0 | The chain gang (141.2 vs Let Him Cook 149.7, L) -100.9 |
+
+
+---
+
+## �📈 Weekly Scoring Trends
 
 *Track team momentum, consistency, and recent form to predict future performance*
 
@@ -92,18 +113,18 @@ This **heatmap visualization** displays each team's weekly scoring performance w
 
 | Team | Avg Score | Recent Form | Trend | Volatility |
 |------|-----------|-------------|-------|------------|
-| Shot of Jameson | 118.0 | 126.5 | ⬆️ +5.2/wk | 13% |
-| Last Second Kicker | 111.4 | 125.3 | ⬆️ +4.2/wk | 15% |
-| Where Shaquon at? | 118.0 | 120.5 | ➡️ -0.9/wk | 14% |
-| Bye Week All-Stars | 101.8 | 119.2 | ⬆️ +9.1/wk | 23% |
-| MarlBurrow Men | 103.5 | 113.1 | ⬆️ +6.3/wk | 20% |
-| Little Kittle Lover | 111.3 | 112.3 | ⬆️ +3.5/wk | 15% |
-| Josh & Junk | 101.4 | 106.4 | ➡️ -0.5/wk | 14% |
-| The chain gang | 111.9 | 103.3 | ➡️ +0.1/wk | 17% |
-| Let Him Cook | 108.8 | 99.6 | ⬇️ -2.3/wk | 10% |
-| Stèrby FFC | 99.0 | 98.5 | ➡️ -0.5/wk | 10% |
-| Go On Jalen! | 109.0 | 92.3 | ⬇️ -4.2/wk | 20% |
-| The Hurt Locker | 92.4 | 91.0 | ⬇️ -1.5/wk | 24% |
+| Let Him Cook | 114.2 | 126.0 | ⬆️ +2.1/wk | 14% |
+| Little Kittle Lover | 110.6 | 116.9 | ⬆️ +1.2/wk | 14% |
+| Josh & Junk | 106.4 | 116.2 | ⬆️ +2.2/wk | 15% |
+| Bye Week All-Stars | 100.5 | 110.3 | ⬆️ +3.2/wk | 22% |
+| The chain gang | 109.9 | 107.2 | ➡️ -0.4/wk | 23% |
+| MarlBurrow Men | 101.2 | 106.2 | ⬆️ +1.7/wk | 19% |
+| Last Second Kicker | 108.2 | 106.0 | ➡️ +0.5/wk | 15% |
+| The Hurt Locker | 100.3 | 105.5 | ⬆️ +3.2/wk | 26% |
+| Stèrby FFC | 99.4 | 102.1 | ➡️ -0.0/wk | 9% |
+| Where Shaquon at? | 115.0 | 99.2 | ⬇️ -2.5/wk | 19% |
+| Go On Jalen! | 104.8 | 96.8 | ⬇️ -4.2/wk | 20% |
+| Shot of Jameson | 108.4 | 91.0 | ⬇️ -2.6/wk | 21% |
 
 
 ---
@@ -134,7 +155,7 @@ This **heatmap visualization** displays each team's weekly scoring performance w
 
 **📈 Generated by GGG Luck Fantasy Football Analyzer**
 
-*Analysis Date: October 22, 2025*
+*Analysis Date: November 09, 2025*
 
 *Unlock the patterns behind your fantasy success*
 

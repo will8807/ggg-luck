@@ -168,9 +168,11 @@ class LuckCalculator:
         # Calculate luck for each completed week
         team_luck_totals = {}
         team_matchups = {}
+        weekly_luck_data = {}  # Store weekly luck data for detailed analysis
         
         for week in completed_weeks:
             week_luck = self.calculate_weekly_luck(all_matchups, week)
+            weekly_luck_data[week] = {}  # Initialize week data
             
             for team_id, luck_score in week_luck.items():
                 if team_id not in team_luck_totals:
@@ -184,6 +186,11 @@ class LuckCalculator:
                                         if m.team_id == team_id and m.week == week), None)
                 if team_week_matchup:
                     team_matchups[team_id].append(team_week_matchup)
+                    # Store weekly luck data for detailed analysis
+                    weekly_luck_data[week][team_id] = {
+                        'matchup': team_week_matchup,
+                        'luck_score': luck_score
+                    }
         
         # Create LuckMetrics for each team
         luck_metrics = []
@@ -240,6 +247,82 @@ class LuckCalculator:
         luck_metrics.sort(key=lambda x: x.total_luck_score)
         
         return luck_metrics
+
+    def get_weekly_luck_breakdown(self, league_key: str, current_week: int = 17) -> Dict:
+        """
+        Get detailed weekly luck breakdown for markdown reporting.
+        
+        Args:
+            league_key: Yahoo league key
+            current_week: Maximum week to check
+            
+        Returns:
+            Dictionary containing weekly luck data
+        """
+        print(f"🔍 Getting weekly luck breakdown for league {league_key}...")
+        
+        # Determine which weeks are complete (similar to analyze_team_luck)
+        completed_weeks = []
+        for week in range(1, current_week + 1):
+            try:
+                matchups_data = self.api.make_api_request(f"league/{league_key}/scoreboard;week={week}")
+                week_matchups = self._parse_matchups(matchups_data, week)
+                if week_matchups:  # If we got matchups, week is complete
+                    completed_weeks.append(week)
+                else:
+                    break
+            except Exception as e:
+                break
+        
+        if not completed_weeks:
+            return {'weeks': {}, 'completed_weeks': []}
+            
+        # Get all matchups for completed weeks
+        all_matchups = []
+        for week in completed_weeks:
+            try:
+                matchups_data = self.api.make_api_request(f"league/{league_key}/scoreboard;week={week}")
+                week_matchups = self._parse_matchups(matchups_data, week)
+                all_matchups.extend(week_matchups)
+            except Exception as e:
+                continue
+        
+        # Calculate luck for each completed week and store detailed data
+        weekly_data = {}
+        
+        for week in completed_weeks:
+            week_luck = self.calculate_weekly_luck(all_matchups, week)
+            week_matchups = [m for m in all_matchups if m.week == week]
+            
+            # Find luckiest and unluckiest for this week
+            if week_luck:
+                luckiest_team_id = max(week_luck.keys(), key=lambda x: week_luck[x])
+                unluckiest_team_id = min(week_luck.keys(), key=lambda x: week_luck[x])
+                
+                luckiest_matchup = next((m for m in week_matchups if m.team_id == luckiest_team_id), None)
+                unluckiest_matchup = next((m for m in week_matchups if m.team_id == unluckiest_team_id), None)
+                
+                weekly_data[week] = {
+                    'luckiest': {
+                        'team_id': luckiest_team_id,
+                        'team_name': luckiest_matchup.team_name if luckiest_matchup else 'Unknown',
+                        'matchup': luckiest_matchup,
+                        'luck_score': week_luck[luckiest_team_id]
+                    },
+                    'unluckiest': {
+                        'team_id': unluckiest_team_id,
+                        'team_name': unluckiest_matchup.team_name if unluckiest_matchup else 'Unknown',
+                        'matchup': unluckiest_matchup,
+                        'luck_score': week_luck[unluckiest_team_id]
+                    },
+                    'all_luck_scores': week_luck,
+                    'all_matchups': week_matchups
+                }
+        
+        return {
+            'weeks': weekly_data,
+            'completed_weeks': completed_weeks
+        }
     
     def _parse_matchups(self, matchups_data: Dict, week: int) -> List[WeeklyMatchup]:
         """Parse Yahoo API matchup data into WeeklyMatchup objects."""
@@ -552,7 +635,7 @@ class LuckCalculator:
             print(f"{metrics.team_name[:20]:<20} Avg: {trends.avg_score:>6.1f} Recent: {trends.recent_avg:>6.1f} "
                   f"{momentum} {streak_info} Vol: {trends.volatility_index:>4.0f}%")
 
-    def generate_markdown_report(self, luck_metrics: List[LuckMetrics], league_name: str = "Fantasy League") -> str:
+    def generate_markdown_report(self, luck_metrics: List[LuckMetrics], league_name: str = "Fantasy League", league_key: str = None) -> str:
         """Generate a comprehensive markdown report with charts."""
         
         # Create charts directory if it doesn't exist
@@ -662,7 +745,68 @@ This chart shows the distribution of luck scores across all teams. Positive valu
 
 ---
 
-## 📈 Weekly Scoring Trends
+## � Weekly Luck Breakdown
+
+*Detailed analysis of the luckiest and unluckiest performances from each week*
+
+"""
+        
+        # Get weekly luck breakdown if league_key is provided
+        if league_key:
+            try:
+                weekly_breakdown = self.get_weekly_luck_breakdown(league_key)
+                weekly_data = weekly_breakdown['weeks']
+                
+                markdown += f"""This section tracks the most fortunate and unfortunate performances on a week-by-week basis, providing insight into how luck has played out throughout the season.
+
+| Week | 🍀 Luckiest Performance | 💀 Unluckiest Performance |
+|------|------------------------|---------------------------|
+"""
+                
+                # Add weekly breakdown data
+                for week in weekly_breakdown['completed_weeks']:
+                    if week in weekly_data:
+                        week_data = weekly_data[week]
+                        
+                        # Format luckiest performance
+                        luckiest = week_data['luckiest']
+                        luckiest_matchup = luckiest['matchup']
+                        if luckiest_matchup:
+                            luckiest_result = "W" if luckiest_matchup.won else "L"
+                            luckiest_text = f"{luckiest['team_name']} ({luckiest_matchup.team_score:.1f} vs {luckiest_matchup.opponent_name} {luckiest_matchup.opponent_score:.1f}, {luckiest_result}) +{luckiest['luck_score']:.1f}"
+                        else:
+                            luckiest_text = f"{luckiest['team_name']} +{luckiest['luck_score']:.1f}"
+                        
+                        # Format unluckiest performance  
+                        unluckiest = week_data['unluckiest']
+                        unluckiest_matchup = unluckiest['matchup']
+                        if unluckiest_matchup:
+                            unluckiest_result = "W" if unluckiest_matchup.won else "L"
+                            unluckiest_text = f"{unluckiest['team_name']} ({unluckiest_matchup.team_score:.1f} vs {unluckiest_matchup.opponent_name} {unluckiest_matchup.opponent_score:.1f}, {unluckiest_result}) {unluckiest['luck_score']:+.1f}"
+                        else:
+                            unluckiest_text = f"{unluckiest['team_name']} {unluckiest['luck_score']:+.1f}"
+                        
+                        markdown += f"| {week} | {luckiest_text} | {unluckiest_text} |\n"
+                    else:
+                        markdown += f"| {week} | *No data* | *No data* |\n"
+                        
+            except Exception as e:
+                print(f"⚠️ Could not generate weekly breakdown: {e}")
+                markdown += f"""This section tracks the most fortunate and unfortunate performances on a week-by-week basis.
+
+*Weekly breakdown data unavailable - showing season totals above.*
+"""
+        else:
+            markdown += f"""This section tracks the most fortunate and unfortunate performances on a week-by-week basis.
+
+*Weekly breakdown requires league key - showing season totals above.*
+"""
+
+        markdown += f"""
+
+---
+
+## �📈 Weekly Scoring Trends
 
 *Track team momentum, consistency, and recent form to predict future performance*
 
@@ -984,15 +1128,143 @@ This **heatmap visualization** displays each team's weekly scoring performance w
         plt.savefig(f'{charts_dir}/scoring_trends.png', dpi=300, bbox_inches='tight')
         plt.close()
 
-    def save_markdown_report(self, luck_metrics: List[LuckMetrics], filename: str = "analysis_report.md", league_name: str = "Fantasy League"):
+    def save_markdown_report(self, luck_metrics: List[LuckMetrics], filename: str = "analysis_report.md", league_name: str = "Fantasy League", league_key: str = None):
         """Generate and save markdown report to file."""
-        markdown_content = self.generate_markdown_report(luck_metrics, league_name)
+        markdown_content = self.generate_markdown_report(luck_metrics, league_name, league_key)
         
         with open(filename, 'w', encoding='utf-8') as f:
             f.write(markdown_content)
             
         print(f"📄 Markdown report saved to: {filename}")
         print(f"📊 Charts saved to: charts/ directory")
+
+    def get_current_week_summary(self, league_key: str, max_week: int = 17) -> Dict:
+        """
+        Get a summary of luck for the current week only.
+        
+        Args:
+            league_key: Yahoo league key
+            max_week: Maximum week to check
+            
+        Returns:
+            Dictionary containing current week's luck analysis
+        """
+        print(f"🔍 Determining current week for league {league_key}...")
+        
+        # Find the most recent completed week
+        current_week = None
+        for week in range(1, max_week + 1):
+            print(f"📊 Checking week {week}...")
+            try:
+                matchups_data = self.api.make_api_request(f"league/{league_key}/scoreboard;week={week}")
+                week_matchups = self._parse_matchups(matchups_data, week)
+                if week_matchups:  # If we got matchups, week is complete
+                    current_week = week
+                    print(f"✅ Week {week} is complete")
+                else:
+                    print(f"⏳ Week {week} is not complete - this is the current week")
+                    break
+            except Exception as e:
+                print(f"⏳ Week {week} is not available - stopping at week {current_week or 'unknown'}")
+                break
+        
+        if not current_week:
+            return {
+                'error': 'No completed weeks found',
+                'week': None,
+                'matchups': [],
+                'luck_scores': {}
+            }
+        
+        print(f"📈 Analyzing current week: {current_week}")
+        
+        # Get matchups for the current week
+        try:
+            matchups_data = self.api.make_api_request(f"league/{league_key}/scoreboard;week={current_week}")
+            week_matchups = self._parse_matchups(matchups_data, current_week)
+            
+            if not week_matchups:
+                return {
+                    'error': f'No matchup data found for week {current_week}',
+                    'week': current_week,
+                    'matchups': [],
+                    'luck_scores': {}
+                }
+            
+            # Calculate luck scores for this week
+            luck_scores = self.calculate_weekly_luck(week_matchups, current_week)
+            
+            # Group matchups by teams for easier display
+            team_matchups = {}
+            for matchup in week_matchups:
+                team_matchups[matchup.team_id] = matchup
+            
+            return {
+                'week': current_week,
+                'matchups': week_matchups,
+                'team_matchups': team_matchups,
+                'luck_scores': luck_scores,
+                'error': None
+            }
+            
+        except Exception as e:
+            return {
+                'error': f'Failed to analyze week {current_week}: {str(e)}',
+                'week': current_week,
+                'matchups': [],
+                'luck_scores': {}
+            }
+
+    def display_current_week_summary(self, week_summary: Dict):
+        """Display a formatted summary of the current week's luck analysis."""
+        if week_summary.get('error'):
+            print(f"❌ {week_summary['error']}")
+            return
+        
+        week = week_summary['week']
+        team_matchups = week_summary['team_matchups']
+        luck_scores = week_summary['luck_scores']
+        
+        print(f"\n🏈 CURRENT WEEK LUCK SUMMARY - WEEK {week}")
+        print("=" * 60)
+        
+        # Sort teams by luck score (most unlucky first)
+        sorted_teams = sorted(luck_scores.items(), key=lambda x: x[1])
+        
+        print(f"{'Team':<20} {'Score':<8} {'Opp Score':<10} {'Result':<6} {'Luck':<8}")
+        print("-" * 60)
+        
+        for team_id, luck_score in sorted_teams:
+            matchup = team_matchups.get(team_id)
+            if matchup:
+                result = "WIN" if matchup.won else "LOSS"
+                luck_emoji = "🍀" if luck_score > 10 else "💀" if luck_score < -10 else "😐"
+                
+                print(f"{matchup.team_name[:19]:<20} {matchup.team_score:<8.1f} "
+                      f"{matchup.opponent_score:<10.1f} {result:<6} "
+                      f"{luck_score:>+6.1f} {luck_emoji}")
+        
+        # Show most extreme performances
+        if luck_scores:
+            luckiest_team_id = max(luck_scores.keys(), key=lambda x: luck_scores[x])
+            unluckiest_team_id = min(luck_scores.keys(), key=lambda x: luck_scores[x])
+            
+            luckiest_matchup = team_matchups[luckiest_team_id]
+            unluckiest_matchup = team_matchups[unluckiest_team_id]
+            
+            print(f"\n🎰 WEEK {week} EXTREMES:")
+            print("-" * 30)
+            print(f"🍀 Luckiest:  {luckiest_matchup.team_name} "
+                  f"({luckiest_matchup.team_score:.1f} vs {luckiest_matchup.opponent_score:.1f}, "
+                  f"{'W' if luckiest_matchup.won else 'L'}) - Luck: {luck_scores[luckiest_team_id]:+.1f}")
+            print(f"💀 Unluckiest: {unluckiest_matchup.team_name} "
+                  f"({unluckiest_matchup.team_score:.1f} vs {unluckiest_matchup.opponent_score:.1f}, "
+                  f"{'W' if unluckiest_matchup.won else 'L'}) - Luck: {luck_scores[unluckiest_team_id]:+.1f}")
+        
+        print(f"\n💡 Week {week} Luck Explanation:")
+        print("  • Positive scores = Got lucky this week")
+        print("  • Negative scores = Got unlucky this week")
+        print("  • Based on your score vs. all other teams this week")
 
 
 def main():
@@ -1038,16 +1310,32 @@ def main():
             
         print(f"🏆 Analyzing league: {league_key}")
         
-        # Run luck analysis
+        # Initialize calculator
         calculator = LuckCalculator(api)
-        luck_metrics = calculator.analyze_team_luck(league_key)
         
-        # Display results
-        calculator.display_luck_analysis(luck_metrics)
-        
-        # Generate markdown report
-        print(f"\n📊 Generating markdown report...")
-        calculator.save_markdown_report(luck_metrics, "analysis_report.md", "Gang of Gridiron Gurus")
+        # Check if user wants current week only or full analysis
+        import sys
+        if len(sys.argv) > 1 and sys.argv[1].lower() in ['--current-week', '--week', '-w']:
+            # Current week summary only
+            print(f"\n📊 Getting current week summary...")
+            week_summary = calculator.get_current_week_summary(league_key)
+            calculator.display_current_week_summary(week_summary)
+        else:
+            # Full season analysis
+            print(f"\n📊 Running full season luck analysis...")
+            luck_metrics = calculator.analyze_team_luck(league_key)
+            
+            # Display results
+            calculator.display_luck_analysis(luck_metrics)
+            
+            # Generate markdown report
+            print(f"\n📊 Generating markdown report...")
+            calculator.save_markdown_report(luck_metrics, "analysis_report.md", "Gang of Gridiron Gurus", league_key)
+            
+            # Also show current week summary
+            print(f"\n" + "="*60)
+            week_summary = calculator.get_current_week_summary(league_key)
+            calculator.display_current_week_summary(week_summary)
         
         print(f"\n💡 Luck Score Explanation:")
         print("  • Positive scores = Lucky (winning more than expected)")
@@ -1056,6 +1344,66 @@ def main():
         
     except Exception as e:
         print(f"❌ Error running luck analysis: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+def current_week_main():
+    """Main function to run current week luck analysis only."""
+    try:
+        # Initialize Yahoo API
+        api = YahooFantasyAPI()
+        
+        print("🏈 GGG Luck - Current Week Summary")
+        print("=" * 50)
+        
+        # Check if we have access token, try to load from environment
+        if not api.access_token:
+            import os
+            api.access_token = os.getenv('YAHOO_ACCESS_TOKEN')
+            api.refresh_token = os.getenv('YAHOO_REFRESH_TOKEN')
+            
+            if not api.access_token:
+                print("❌ No access token found. Please run 'uv run ggg-luck-example' first to authenticate.")
+                return
+        
+        # Get user's leagues
+        print("🔍 Fetching your fantasy leagues...")
+        leagues = api.get_user_leagues("nfl")
+        
+        # Extract league key (assuming first league for now)
+        league_key = None
+        if 'fantasy_content' in leagues:
+            fantasy_content = leagues['fantasy_content']
+            if 'users' in fantasy_content:
+                users = fantasy_content['users']
+                if 'user' in users:
+                    user_data = users['user']
+                    if 'games' in user_data and 'game' in user_data['games']:
+                        game_data = user_data['games']['game']
+                        if 'leagues' in game_data and 'league' in game_data['leagues']:
+                            league = game_data['leagues']['league']
+                            league_key = league.get('league_key')
+        
+        if not league_key:
+            print("❌ Could not find league key")
+            return
+            
+        print(f"🏆 Analyzing league: {league_key}")
+        
+        # Initialize calculator and get current week summary
+        calculator = LuckCalculator(api)
+        week_summary = calculator.get_current_week_summary(league_key)
+        calculator.display_current_week_summary(week_summary)
+        
+        print(f"\n💡 Current Week Luck Explanation:")
+        print("  • Shows luck analysis for the most recently completed week")
+        print("  • Positive scores = Got lucky this week")
+        print("  • Negative scores = Got unlucky this week")
+        print("  • Based on your score vs. all other teams this week")
+        
+    except Exception as e:
+        print(f"❌ Error running current week analysis: {e}")
         import traceback
         traceback.print_exc()
 
