@@ -138,27 +138,3 @@ jobs:
         files: |
           analysis_report.md
           charts/*.png
-
-  # Optional: Deploy to GitHub Pages if you want a web version
-  deploy-pages:
-    needs: analyze-luck
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && needs.analyze-luck.outputs.in_season == 'true'
-    
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        ref: main
-    
-    - name: Setup Pages
-      uses: actions/configure-pages@v4
-    
-    - name: Upload to GitHub Pages
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: './charts'
-    
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
