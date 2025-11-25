@@ -19,8 +19,10 @@ class YahooFantasyAPI:
         self.client_secret = os.getenv('YAHOO_CLIENT_SECRET')
         self.app_id = os.getenv('YAHOO_APP_ID')  # Optional for some endpoints
         self.redirect_uri = os.getenv('YAHOO_REDIRECT_URI', 'http://localhost:8080/callback')
-        self.access_token = None
-        self.refresh_token = None
+        
+        # Load existing tokens from environment if available
+        self.access_token = os.getenv('YAHOO_ACCESS_TOKEN')
+        self.refresh_token = os.getenv('YAHOO_REFRESH_TOKEN')
         
         if not self.client_id or not self.client_secret:
             raise ValueError(
@@ -72,7 +74,39 @@ class YahooFantasyAPI:
         self.access_token = token_data.get('access_token')
         self.refresh_token = token_data.get('refresh_token')
         
+        # Automatically save tokens to .env file
+        self.save_tokens_to_env()
+        
         return token_data
+
+    def save_tokens_to_env(self):
+        """Save access and refresh tokens to .env file."""
+        if not self.access_token:
+            return
+            
+        env_file_path = '.env'
+        
+        # Read existing .env content
+        env_content = {}
+        if os.path.exists(env_file_path):
+            with open(env_file_path, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, value = line.split('=', 1)
+                        env_content[key.strip()] = value.strip()
+        
+        # Update token values
+        env_content['YAHOO_ACCESS_TOKEN'] = self.access_token
+        if self.refresh_token:
+            env_content['YAHOO_REFRESH_TOKEN'] = self.refresh_token
+        
+        # Write back to .env file
+        with open(env_file_path, 'w') as f:
+            for key, value in env_content.items():
+                f.write(f"{key}={value}\n")
+        
+        print(f"💾 Tokens saved to {env_file_path}")
 
     def refresh_access_token(self) -> Dict[str, Any]:
         """Refresh the access token using refresh token."""
@@ -97,6 +131,9 @@ class YahooFantasyAPI:
         
         token_data = response.json()
         self.access_token = token_data.get('access_token')
+        
+        # Save the refreshed token
+        self.save_tokens_to_env()
         
         return token_data
 
@@ -173,9 +210,51 @@ class YahooFantasyAPI:
 
     def get_league_players(self, league_key: str, 
                           start: int = 0, 
-                          count: int = 25) -> Dict[str, Any]:
-        """Get players in a league with pagination."""
+                          count: int = 25,
+                          status: str = "ALL",
+                          position: Optional[str] = None) -> Dict[str, Any]:
+        """Get players in a league with pagination and filtering."""
         endpoint = f"league/{league_key}/players;start={start};count={count}"
+        
+        # Add status filter (A = available/free agents, T = taken, ALL = all players)
+        if status != "ALL":
+            endpoint += f";status={status}"
+            
+        # Add position filter
+        if position:
+            endpoint += f";position={position}"
+            
+        return self.make_api_request(endpoint)
+
+    def get_league_free_agents(self, league_key: str,
+                              position: Optional[str] = None,
+                              start: int = 0,
+                              count: int = 25,
+                              sort: str = "OR") -> Dict[str, Any]:
+        """
+        Get free agents (available players) in a league.
+        
+        Args:
+            league_key: Yahoo league key
+            position: Position filter (QB, RB, WR, TE, K, DEF)
+            start: Starting index for pagination
+            count: Number of players to return
+            sort: Sort criteria (OR = ownership percentage, AR = add/drop ranking)
+        """
+        endpoint = f"league/{league_key}/players;start={start};count={count};status=A"
+        
+        # Add position filter
+        if position:
+            endpoint += f";position={position}"
+            
+        # Add sort parameter (OR = ownership rank, AR = add/drop rank)
+        endpoint += f";sort={sort}"
+            
+        return self.make_api_request(endpoint)
+
+    def get_league_teams(self, league_key: str) -> Dict[str, Any]:
+        """Get all teams in a league."""
+        endpoint = f"league/{league_key}/teams"
         return self.make_api_request(endpoint)
 
     def get_player_stats(self, player_key: str, 
