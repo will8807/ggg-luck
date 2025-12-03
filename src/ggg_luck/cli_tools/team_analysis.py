@@ -9,7 +9,7 @@ from ggg_luck.team_analyzer import TeamAnalyzer
 
 
 def analyze_team(league_key: str, team_identifier: str, week: Optional[int] = None, 
-                output_file: Optional[str] = None) -> None:
+                output_file: Optional[str] = None, include_trades: bool = True) -> None:
     """Analyze a team and generate LLM prompt."""
     try:
         # Initialize API
@@ -82,7 +82,7 @@ def analyze_team(league_key: str, team_identifier: str, week: Optional[int] = No
         league_data = analyzer.get_complete_league_data(league_key, week)
         
         # Generate analysis prompt
-        prompt = analyzer.generate_team_analysis_prompt(team_id, league_data, league_key)
+        prompt = analyzer.generate_team_analysis_prompt(team_id, league_data, league_key, include_trades)
         
         # Save or print the prompt
         if output_file:
@@ -166,6 +166,10 @@ def main():
     parser.add_argument("--week", "-w", type=int, help="Week number (current week if not specified)")
     parser.add_argument("--output", "-o", help="Output file path for the prompt")
     parser.add_argument("--list-teams", action="store_true", help="List all teams in the league")
+    parser.add_argument("--include-trades", action="store_true", default=True, 
+                       help="Include trade analysis with other team rosters (default: True)")
+    parser.add_argument("--no-trades", action="store_true", 
+                       help="Exclude trade analysis and other team rosters")
     
     args = parser.parse_args()
     
@@ -175,11 +179,18 @@ def main():
     if args.list_teams:
         list_teams(args.league)
     elif args.team:
-        analyze_team(args.league, args.team, args.week, args.output)
+        # Determine if trades should be included
+        include_trades = not args.no_trades
+        analyze_team(args.league, args.team, args.week, args.output, include_trades)
     else:
         print("❌ Please specify either --team <TEAM_NAME> or --list-teams")
         print("💡 Use --list-teams to see all team names in the league first")
         print("💡 You can use either team name or team ID with --team")
+        print("💡 Use --no-trades to exclude trade analysis (useful for privacy)")
+        print("💡 Examples:")
+        print(f"   uv run python -m ggg_luck.cli_tools.team_analysis -l {args.league} --list-teams")
+        print(f"   uv run python -m ggg_luck.cli_tools.team_analysis -l {args.league} -t \"Team Name\"")
+        print(f"   uv run python -m ggg_luck.cli_tools.team_analysis -l {args.league} -t \"Team Name\" --no-trades")
         sys.exit(1)
 
 

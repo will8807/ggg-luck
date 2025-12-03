@@ -468,8 +468,185 @@ class TeamAnalyzer:
         
         return league_data
 
-    def generate_team_analysis_prompt(self, target_team_id: str, league_data: LeagueData, league_key: str) -> str:
+    def get_league_scoring_rules(self, league_key: str) -> str:
+        """Get formatted scoring rules for the league."""
+        try:
+            settings_data = self.api.make_api_request(f"league/{league_key}/settings")
+            settings = settings_data['fantasy_content']['league']['settings']
+            
+            scoring_text = "## League Scoring Rules\n\n"
+            
+            # Add roster composition
+            roster_positions = settings.get('roster_positions', {}).get('roster_position', [])
+            scoring_text += "### Roster Composition:\n"
+            for pos in roster_positions:
+                position = pos.get('position', '')
+                count = pos.get('count', '')
+                is_starting = pos.get('is_starting_position', '0') == '1'
+                if is_starting:
+                    scoring_text += f"- {position}: {count} (starting)\n"
+                else:
+                    scoring_text += f"- {position}: {count} (bench)\n"
+            scoring_text += "\n"
+            
+            # Add scoring rules
+            stat_modifiers = settings.get('stat_modifiers', {}).get('stats', {}).get('stat', [])
+            stat_categories = settings.get('stat_categories', {}).get('stats', {}).get('stat', [])
+            
+            # Create lookup for stat names
+            stat_names = {}
+            for stat in stat_categories:
+                stat_names[stat.get('stat_id')] = {
+                    'name': stat.get('name', ''),
+                    'display_name': stat.get('display_name', ''),
+                    'group': stat.get('group', ''),
+                    'position_type': stat.get('position_type', '')
+                }
+            
+            # Group scoring by position type
+            position_scoring = {'O': [], 'K': [], 'DT': []}
+            
+            for modifier in stat_modifiers:
+                stat_id = modifier.get('stat_id')
+                value = modifier.get('value', '0')
+                bonuses = modifier.get('bonuses', {})
+                
+                if stat_id in stat_names:
+                    stat_info = stat_names[stat_id]
+                    pos_type = stat_info['position_type']
+                    
+                    # Format the scoring rule
+                    rule_text = f"{stat_info['display_name']}: {value} pts"
+                    
+                    # Add bonuses if they exist
+                    if bonuses and 'bonus' in bonuses:
+                        bonus_list = bonuses['bonus']
+                        if not isinstance(bonus_list, list):
+                            bonus_list = [bonus_list]
+                        
+                        bonus_text = []
+                        for bonus in bonus_list:
+                            target = bonus.get('target', '')
+                            points = bonus.get('points', '')
+                            bonus_text.append(f"{target}+ = +{points}")
+                        
+                        if bonus_text:
+                            rule_text += f" (Bonus: {', '.join(bonus_text)})"
+                    
+                    if pos_type in position_scoring:
+                        position_scoring[pos_type].append(rule_text)
+            
+            # Format by position type
+            if position_scoring['O']:
+                scoring_text += "### Offensive Players (QB/RB/WR/TE):\n"
+                for rule in position_scoring['O']:
+                    scoring_text += f"- {rule}\n"
+                scoring_text += "\n"
+            
+            if position_scoring['K']:
+                scoring_text += "### Kickers:\n"
+                for rule in position_scoring['K']:
+                    scoring_text += f"- {rule}\n"
+                scoring_text += "\n"
+            
+            if position_scoring['DT']:
+                scoring_text += "### Defense/Special Teams:\n"
+                for rule in position_scoring['DT']:
+                    scoring_text += f"- {rule}\n"
+                scoring_text += "\n"
+            
+            # Add league format info
+            waiver_type = settings.get('waiver_type', 'Unknown')
+            uses_faab = settings.get('uses_faab', '0') == '1'
+            trade_deadline = settings.get('trade_end_date', 'Unknown')
+            
+            scoring_text += "### League Format:\n"
+            scoring_text += f"- Waiver Type: {'FAAB' if uses_faab else waiver_type}\n"
+            scoring_text += f"- Trade Deadline: {trade_deadline}\n"
+            scoring_text += f"- Fractional Scoring: {'Yes' if settings.get('uses_fractional_points') == '1' else 'No'}\n"
+            
+            return scoring_text
+            
+        except Exception as e:
+            return f"## League Scoring Rules\n\n*Unable to retrieve scoring rules: {e}*\n\n"
+    
+    def _generate_bye_week_summary(self, target_roster: 'TeamRoster', current_week: int) -> str:
+        """Generate a bye week summary for the team."""
+        bye_summary = "\n## Bye Week Analysis\n\n"
+        
+        # Collect all players and their bye weeks
+        all_players = target_roster.starting_lineup + target_roster.bench_players
+        bye_weeks = {}
+        
+        for player in all_players:
+            if player.bye_week:
+                bye_week = int(player.bye_week)
+                if bye_week not in bye_weeks:
+                    bye_weeks[bye_week] = []
+                bye_weeks[bye_week].append(f"{player.name} ({player.position})")
+        
+        if not bye_weeks:
+            bye_summary += "No bye week information available.\n\n"
+            return bye_summary
+        
+        # Current week status
+        current_week_int = int(current_week)
+        bye_summary += f"### Current Week: {current_week}\n"
+        
+        # Show past, current, and future bye weeks
+        past_byes = {week: players for week, players in bye_weeks.items() if week < current_week_int}
+        current_byes = bye_weeks.get(current_week_int, [])
+        future_byes = {week: players for week, players in bye_weeks.items() if week > current_week_int}
+        
+        if current_byes:
+            bye_summary += f"**ALERT: Week {current_week} Byes:**\n"
+            for player in current_byes:
+                bye_summary += f"- {player}\n"
+            bye_summary += "\n"
+        
+        if future_byes:
+            bye_summary += "**Upcoming Byes:**\n"
+            for week in sorted(future_byes.keys()):
+                if week <= 17:  # Only show regular season weeks
+                    bye_summary += f"- Week {week}: {', '.join(future_byes[week])}\n"
+            bye_summary += "\n"
+        
+        # Bye week impact analysis
+        bye_summary += "**Bye Week Impact:**\n"
+        
+        # Check for multiple starters on bye same week
+        for week, players in future_byes.items():
+            if week <= 17:
+                starter_positions = []
+                for player_info in players:
+                    player_name = player_info.split('(')[0].strip()
+                    # Find if this player is a starter
+                    for starter in target_roster.starting_lineup:
+                        if starter.name == player_name:
+                            starter_positions.append(starter.position)
+                            break
+                
+                if len(starter_positions) > 1:
+                    bye_summary += f"- Week {week}: Multiple starters on bye ({', '.join(starter_positions)})\n"
+        
+        bye_summary += "\n"
+        return bye_summary
+
+    def generate_team_analysis_prompt(self, target_team_id: str, league_data: LeagueData, 
+                                     league_key: str, include_trades: bool = True) -> str:
         """Generate an LLM prompt for analyzing a specific team's potential moves."""
+        
+        # Get current week from league info
+        try:
+            league_info = self.api.get_league_info(league_key)
+            current_week = league_info['fantasy_content']['league']['current_week']
+        except:
+            # Fallback to calculated week if API call fails
+            from datetime import datetime
+            current_date = datetime.now()
+            week_1_start = datetime(2025, 9, 4)  # Approximate NFL season start
+            days_since_week_1 = (current_date - week_1_start).days
+            current_week = max(1, min(18, (days_since_week_1 // 7) + 1))
         
         # Find the target team
         target_roster = None
@@ -488,7 +665,13 @@ class TeamAnalyzer:
 - League: {league_data.league_name}
 - Target Team: {target_roster.team_name}
 
-## Current Team Roster
+"""
+        
+        # Add scoring rules
+        scoring_rules = self.get_league_scoring_rules(league_key)
+        prompt += scoring_rules
+
+        prompt += f"""## Current Team Roster
 
 ### Starting Lineup:
 """
@@ -506,6 +689,9 @@ class TeamAnalyzer:
             injury_info = f" ({player.injury_status})" if player.injury_status else ""
             bye_info = f" [Bye: {player.bye_week}]" if player.bye_week else ""
             prompt += f"- {player.name} ({player.position}, {player.team}){injury_info}{bye_info}\n"
+        
+        # Add bye week summary
+        prompt += self._generate_bye_week_summary(target_roster, current_week)
         
         if target_roster.ir_players:
             prompt += "\n### IR Players:\n"
@@ -547,42 +733,44 @@ class TeamAnalyzer:
                     prompt += f"- {fa.name} ({fa.team}){ownership_info}{injury_info}{bye_info}\n"
                 prompt += "\n"
         
-        prompt += "\n## Other Team Rosters (for Trade Analysis)\n\n"
+        # Conditionally include trade analysis section
+        if include_trades:
+            prompt += "\n## Other Team Rosters (for Trade Analysis)\n\n"
+            
+            # Add other team rosters with records
+            for roster in league_data.team_rosters:
+                if roster.team_id != target_team_id:
+                    # Find team record from the stored teams data
+                    team_record = ""
+                    if hasattr(league_data, 'teams_info'):
+                        for team in league_data.teams_info:
+                            if team['team_id'] == roster.team_id:
+                                wins = team.get('wins', 0)
+                                losses = team.get('losses', 0)
+                                team_record = f" ({wins}-{losses})"
+                                break
+                    
+                    prompt += f"### {roster.team_name}{team_record}:\n"
+                    
+                    # Group players by position
+                    team_by_position = {}
+                    for player in roster.players:
+                        if player.position not in team_by_position:
+                            team_by_position[player.position] = []
+                        team_by_position[player.position].append(player)
+                    
+                    # Show key positions
+                    for position in ['QB', 'RB', 'WR', 'TE']:
+                        if position in team_by_position:
+                            # Show all players for better trade analysis
+                            players_str = ", ".join([p.name for p in team_by_position[position]])
+                            prompt += f"  {position}: {players_str}\n"
+                    prompt += "\n"
         
-        # Add other team rosters with records
-        for roster in league_data.team_rosters:
-            if roster.team_id != target_team_id:
-                # Find team record from the stored teams data
-                team_record = ""
-                if hasattr(league_data, 'teams_info'):
-                    for team in league_data.teams_info:
-                        if team['team_id'] == roster.team_id:
-                            wins = team.get('wins', 0)
-                            losses = team.get('losses', 0)
-                            team_record = f" ({wins}-{losses})"
-                            break
-                
-                prompt += f"### {roster.team_name}{team_record}:\n"
-                
-                # Group players by position
-                team_by_position = {}
-                for player in roster.players:
-                    if player.position not in team_by_position:
-                        team_by_position[player.position] = []
-                    team_by_position[player.position].append(player)
-                
-                # Show key positions
-                for position in ['QB', 'RB', 'WR', 'TE']:
-                    if position in team_by_position:
-                        # Show all players for better trade analysis
-                        players_str = ", ".join([p.name for p in team_by_position[position]])
-                        prompt += f"  {position}: {players_str}\n"
-                prompt += "\n"
-        
-        prompt += """
+        prompt += f"""
 ## Analysis Request
 
-**IMPORTANT: Before providing recommendations, please research current fantasy football stats, trends, and news for Week 12 of the 2025 NFL season. Consider:**
+**IMPORTANT: Before providing recommendations, please research current fantasy football stats, trends, and news for Week {current_week} of the 2025 NFL season. Consider:**
 - Recent player performance trends and target shares
 - Injury updates and their impact on player values
 - Upcoming schedule strength and matchups
@@ -590,18 +778,38 @@ class TeamAnalyzer:
 - Trade deadline implications and team needs across the NFL
 - Weather conditions and game environments that could affect scoring
 
+**KEY: Use the league scoring rules above to evaluate player values and prioritize recommendations. Pay special attention to:**
+- Half-PPR scoring (0.5 pts per reception)
+- Rushing yard bonus at 0.1 pts/yard vs 0.04 for passing
+- Significant yardage bonuses (150+, 200+, 250+ yards)
+- Defense scoring based on points allowed tiers
+- FAAB waiver system considerations
+
+**CRITICAL: Consider bye weeks heavily in all recommendations:**
+- Current week bye players are unavailable and need immediate replacements
+- Upcoming bye weeks (especially multiple starters on same bye) require advance planning
+- Free agent pickups should consider bye week timing vs your roster gaps
+- Don't recommend dropping players who will be valuable when others are on bye
+- Prioritize players with favorable bye week timing for playoff push
+
 Please provide a comprehensive analysis covering:
 
 1. **Roster Strengths and Weaknesses:**
    - Identify the strongest and weakest positions on the current roster
    - Note any depth concerns or injury risks
-   - Assess upcoming bye week challenges
+   - **PRIORITY: Address current week bye situations and plan for upcoming bye weeks**
+   - Evaluate if you have adequate bench depth for bye week coverage
 
 2. **Waiver Wire Opportunities:**
    - Recommend top waiver wire pickups based on team needs
+   - **Consider bye week timing when prioritizing pickups**
    - Suggest who could be dropped to make room
    - Identify potential breakout candidates or handcuffs
+"""
 
+        # Conditionally include trade recommendations
+        if include_trades:
+            prompt += """
 3. **Trade Recommendations:**
    - Suggest realistic trade targets that address team weaknesses
    - Identify players from other teams who might be available
@@ -617,7 +825,21 @@ Please provide a comprehensive analysis covering:
    - Assess whether the team should be buying for playoffs or selling for next year
    - Consider league standings and remaining schedule strength
    - Identify any urgent moves needed for this week vs. longer-term moves
+"""
+        else:
+            prompt += """
+3. **Stash Candidates:**
+   - Identify players to stash for playoffs or future breakouts
+   - Consider handcuffs for key players
+   - Look for players returning from injury
 
+4. **Strategic Considerations:**
+   - Assess whether the team should be buying for playoffs or selling for next year
+   - Consider league standings and remaining schedule strength
+   - Identify any urgent moves needed for this week vs. longer-term moves
+"""
+
+        prompt += """
 Provide specific player names and actionable recommendations. Focus on realistic moves that improve the team's championship potential.
 """
         
